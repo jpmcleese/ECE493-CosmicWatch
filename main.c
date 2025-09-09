@@ -8,7 +8,9 @@ int main(void)
 {
 	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
 	
-	return 0;
+    while(1){
+        __low_power_mode_3(); 
+    }
 }
 
 #pragma vector=PORT1_VECTOR       // ISR for Port 1
