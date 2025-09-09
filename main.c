@@ -50,10 +50,6 @@ int main(void)
     P2IES |=  BIT4;               // Make P2.4 interrupt happen on the falling edge
     P2IFG &= ~BIT4;               // Clear the P2.4 interrupt flag
     P2IE  |=  BIT4;               // Enable P2.4 interrupt
-
-
-    return 0;
-	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
 	
     while(1){
         __low_power_mode_3(); 
