@@ -1,3 +1,17 @@
+// |__   __|_   _/ ____|  __ \
+//    | |    | || |  __| |__) |
+//    | |    | || | |_ |  _  /
+//    | |   _| || |__| | | \ \
+//    |_|  |_____\_____|_|  \_\
+//
+// Date: 9/11/2025
+// Version: 1
+// Authors: Kevin Nguyen, Daniel Uribe
+//
+// Description: 4 inputs where each pin will be connected to comparator. Falling edge interrupts
+// with priority to higher energy band. Currently displays energy band to on board LEDs and does
+// not save energy band onto RAM.
+//
 
 #include <msp430.h>
 
@@ -7,7 +21,7 @@ int main(void)
     PM5CTL0 &= ~LOCKLPM5;         // Unlock ports from power manager
 
     P9DIR   |= BIT7;             //LED2 (P9.7) set as output
-    P1DIR   |= BIT0;             //LED1, rLED, gLED, bLED set as output
+    P1DIR   |= BIT0;             //LED1 (P1.0) set as output
 
     P2DIR &= ~BIT1;               // Set pin P2.1 to be an input; energy band 1
     P2REN |=  BIT1;               // Enable internal pullup/pulldown resistor on P2.1
