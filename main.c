@@ -63,6 +63,9 @@ int main(void)
 
     while(1){
         __low_power_mode_3();
+        __delay_cycles(500000);
+        P1OUT &= ~BIT0;
+        P9OUT &= ~BIT7;
     }
 }
 
@@ -89,4 +92,5 @@ __interrupt void ISRP1(void){
     P2IFG &= ~BIT2;           // clear interrupt flag of P1.2
     P2IFG &= ~BIT3;           // clear interrupt flag of P1.3
     P2IFG &= ~BIT4;           // clear interrupt flag of P1.4
+    __low_power_mode_off_on_exit();
 }
