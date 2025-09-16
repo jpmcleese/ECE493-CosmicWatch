@@ -58,6 +58,18 @@ void msp_init(){
     P2IFG &= ~BIT4;               // Clear the P2.4 interrupt flag
     P2IE  |=  BIT4;               // Enable P2.4 interrupt
 
+    RTCCTL1 = RTCBCD | RTCHOLD | RTCMODE;   // RTC enable, BCD mode, RTC hold
+
+    RTCYEAR = 0x2024;                       // Year = 0x2024
+    RTCMON = 0x4;                           // Month = 0x04 = April
+    RTCDAY = 0x02;                          // Day = 0x02 = 2nd
+    RTCDOW = 0x02;                          // Day of week = 0x02 = Tuesday
+    RTCHOUR = 0x06;                         // Hour = 0x06
+    RTCMIN = 0x32;                          // Minute = 0x32
+    RTCSEC = 0x45;                          // Seconds = 0x45
+
+    RTCCTL1 &= ~(RTCHOLD);                  // Start RTC
+
     __enable_interrupt();         // Enable global interrupts
 
     P1OUT &= ~BIT0;               // Initialize LEDs to off
