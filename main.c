@@ -6,7 +6,7 @@
 //
 // Date: 9/11/2025
 // Version: 1
-// Authors: Kevin Nguyen, Daniel Uribe
+// Authors: Kevin Nguyen, Daniel Uribe, Arda Cobanoglu, JP Mcleese III
 //
 // Description: 4 inputs where each pin will be connected to comparator. Falling edge interrupts
 // with priority to higher energy band. Currently displays energy band to on board LEDs and does
@@ -14,15 +14,15 @@
 //
 
 #include <msp430.h>
-
-int main(void)
-{
+void msp_init(){
+    
     WDTCTL = WDTPW | WDTHOLD;     // stop watchdog timer
     PM5CTL0 &= ~LOCKLPM5;         // Unlock ports from power manager
 
-    P9DIR   |= BIT7;             //LED2 (P9.7) set as output
-    P1DIR   |= BIT0;             //LED1 (P1.0) set as output
-
+    P9DIR |= BIT7;                //LED2 (P9.7) set as output
+    P1DIR |= BIT0;                //LED1 (P1.0) set as output
+    
+    /*------ENERGY BAND 1-----*/
     P2DIR &= ~BIT1;               // Set pin P2.1 to be an input; energy band 1
     P2REN |=  BIT1;               // Enable internal pullup/pulldown resistor on P2.1
     P2OUT |=  BIT1;               // Pullup selected on P2.1
@@ -31,7 +31,7 @@ int main(void)
     P2IFG &= ~BIT1;               // Clear the P2.1 interrupt flag
     P2IE  |=  BIT1;               // Enable P2.1 interrupt
 
-    //////////////
+    /*------ENERGY BAND 2-----*/
     P2DIR &= ~BIT2;               // Set pin P2.2 to be an input; energy band 2
     P2REN |=  BIT2;               // Enable internal pullup/pulldown resistor on P2.2
     P2OUT |=  BIT2;               // Pullup selected on P2.2
@@ -39,7 +39,8 @@ int main(void)
     P2IES |=  BIT2;               // Make P2.w interrupt happen on the falling edge
     P2IFG &= ~BIT2;               // Clear the P2.2 interrupt flag
     P2IE  |=  BIT2;               // Enable P2.2 interrupt
-    ///////////////
+    
+    /*------ENERGY BAND 3-----*/
     P2DIR &= ~BIT3;               // Set pin P2.3 to be an input; energy band 3
     P2REN |=  BIT3;               // Enable internal pullup/pulldown resistor on P2.3
     P2OUT |=  BIT3;               // Pullup selected on P2.3
@@ -47,7 +48,8 @@ int main(void)
     P2IES |=  BIT3;               // Make P2.3 interrupt happen on the falling edge
     P2IFG &= ~BIT3;               // Clear the P2.3 interrupt flag
     P2IE  |=  BIT3;               // Enable P2.3 interrupt
-    ////////////////
+    
+    /*------ENERGY BAND 4-----*/
     P2DIR &= ~BIT4;               // Set pin P2.4 to be an input; energy band 4
     P2REN |=  BIT4;               // Enable internal pullup/pulldown resistor on P2.4
     P2OUT |=  BIT4;               // Pullup selected on P2.4
@@ -56,20 +58,26 @@ int main(void)
     P2IFG &= ~BIT4;               // Clear the P2.4 interrupt flag
     P2IE  |=  BIT4;               // Enable P2.4 interrupt
 
-    __enable_interrupt();
+    __enable_interrupt();         // Enable global interrupts
 
-    P1OUT &= ~BIT0;            // Initialize LEDs to off
+    P1OUT &= ~BIT0;               // Initialize LEDs to off
     P9OUT &= ~BIT7;
 
+    
+}
+
+int main(void)
+{
+    msp_init();
     while(1){
         __low_power_mode_3();
-        __delay_cycles(500000);
-        P1OUT &= ~BIT0;
+        __delay_cycles(500000);   // Delay by half a second
+        P1OUT &= ~BIT0;           // reset LEDs
         P9OUT &= ~BIT7;
     }
 }
 
-#pragma vector=PORT2_VECTOR       // ISR for Port 1
+#pragma vector=PORT2_VECTOR       // ISR for Port 2
 __interrupt void ISRP1(void){
     if(P2IFG & BIT4){             // Energy band 4 caused the interrupt
         P1OUT |= BIT0;            // 1 1
@@ -88,9 +96,6 @@ __interrupt void ISRP1(void){
         P9OUT &= ~BIT7;
     }
 
-    P2IFG &= ~BIT1;           // clear interrupt flag of P1.1
-    P2IFG &= ~BIT2;           // clear interrupt flag of P1.2
-    P2IFG &= ~BIT3;           // clear interrupt flag of P1.3
-    P2IFG &= ~BIT4;           // clear interrupt flag of P1.4
+    P2IFG &= ~(BIT1 | BIT2 | BIT3 | BIT4);  // clear interrupt flags for P2.1, P2.2, P2.3, P2.4
     __low_power_mode_off_on_exit();
 }
