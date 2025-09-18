@@ -3,7 +3,7 @@
 [![Platform](https://img.shields.io/badge/Platform-MSP430-blue.svg)](https://www.ti.com/microcontrollers-mcus-processors/msp430-microcontrollers/overview.html)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
 
-## 📖 Overview
+## Overview
 
 TIGR is an embedded system designed to detect and log muon events across **four distinct energy bands**. Built for the **MSP430FR5969 microcontroller**, this instrument provides interrupt-driven detection with precision timestamping using the integrated Real-Time Clock (RTC).
 
