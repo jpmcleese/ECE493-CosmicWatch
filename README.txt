@@ -4,8 +4,8 @@
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
 
 ## 📖 Overview
-TIGR is an embedded system designed to detect and log muon events across **four distinct energy bands**. Built for the **MSP430FR5969 microcontroller**,
-this instrument provides interrupt-driven detection with precision timestamping using the integrated Real-Time Clock (RTC).
+
+TIGR is an embedded system designed to detect and log muon events across **four distinct energy bands**. Built for the **MSP430FR5969 microcontroller**, this instrument provides interrupt-driven detection with precision timestamping using the integrated Real-Time Clock (RTC).
 
 The system is optimized for low-power operation and designed with space-grade deployment in mind, making it suitable for satellite and high-altitude applications.
 
@@ -67,6 +67,7 @@ typedef struct {
 ```
 
 ### Data Output Format
+
 ```
 Event#, Band, Year, Month, Day, Hour, Minute, Second
 00001, 2, 2024, 03, 15, 14, 30, 45
@@ -74,11 +75,10 @@ Event#, Band, Year, Month, Day, Hour, Minute, Second
 00003, 4, 2024, 03, 15, 14, 30, 52
 ```
 
-### Low Power Mode
+## Low Power Mode
+
 The system automatically enters low power mode between events to conserve energy:
+
 ```c
 __bis_SR_register(LPM3_bits + GIE);  // Enter LPM3 with interrupts enabled
 ```
-
-
-</div>
