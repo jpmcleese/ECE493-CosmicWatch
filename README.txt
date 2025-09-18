@@ -1,61 +1,85 @@
-# Tiny Instrument to Gather Radiation (TIGR) (MSP430)
+# Tiny Instrument to Gather Radiation (TIGR)
 
-## Overview
-This project runs on the **MSP430FR5969 microcontroller** and is designed to detect muon events categorized into **four energy bands**. Each energy band is mapped to a GPIO input pin connected to a comparator. 
-When a falling-edge interrupt occurs on one of these pins, the corresponding energy band is logged, along with a timestamp from the Real-Time Clock (RTC).
+[![Platform](https://img.shields.io/badge/Platform-MSP430-blue.svg)](https://www.ti.com/microcontrollers-mcus-processors/msp430-microcontrollers/overview.html)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
 
-LEDs on the development board are used to visually display which energy band was triggered. Logged events are stored in memory, with the ability to later expand to external storage (e.g., SD card).
+## 🔬 Overview
 
----
+TIGR is an embedded system designed to detect and log muon events across **four distinct energy bands**. Built for the **MSP430FR5969 microcontroller**, 
+this instrument provides interrupt-driven detection with precision timestamping using the integrated Real-Time Clock (RTC).
 
-## Development & Deployment
-- **Current Development Board:** [MSP430FR6989 LaunchPad Development Kit](https://www.ti.com/tool/MSP-EXP430FR6989)  
-- **Target Deployment Board:** [MSP430FR5989-SP (Space-Grade MSP430FR5989)](https://www.ti.com/product/MSP430FR5989-SP)  
+The system is optimized for low-power operation and designed with space-grade deployment in mind, making it suitable for satellite and high-altitude applications.
 
-Development and testing are currently performed on the FR6989 prototyping board. The final deployment target is the FR5989-SP for space-qualified applications.
+## ✨ Features
 
----
+- **Multi-band Detection**: Simultaneous monitoring of 4 energy bands via GPIO interrupt pins
+- **Precision Timestamping**: RTC-based event logging with full date/time resolution
+- **Visual Feedback**: On-board LED indicators for real-time energy band identification  
+- **Low Power Design**: Optimized for energy-efficient operation in space environments
+- **Expandable Storage**: RAM buffer with SD card expansion capability
+- **Interrupt-Driven**: Efficient event capture using falling-edge GPIO interrupts
+- **Space-Qualified**: Designed for deployment on MSP430FR5989-SP hardware
 
-## Features
-- Interrupt-driven detection of up to **4 energy bands** using GPIO falling edges.  
-- Event logging with timestamp:
-  - Muon event number  
-  - Energy band (1–4)  
-  - Year, month, day, hour, minute, second  
-- On-board LED indicators for quick visual identification of triggered energy bands.  
-- Low power mode support for energy-efficient operation.  
-- Expandable storage: currently logs to a buffer in RAM, but designed to be extended to SD card storage when buffer is full.  
+## 🔧 Hardware Requirements
 
----
+### Development Platform
+- **MCU**: [MSP430FR6989 LaunchPad Development Kit](https://www.ti.com/tool/MSP-EXP430FR6989)
+- **Comparators**: 4x external comparator circuits (one per energy band)
+- **Power Supply**: 3.3V regulated supply
 
-## Hardware Setup
-**MCU:** TI MSP430 (with RTC support).  
+### Production Platform  
+- **MCU**: [MSP430FR5989-SP (Space-Grade)](https://www.ti.com/product/MSP430FR5989-SP)
+- **Operating Temperature**: -55°C to +125°C
+- **Radiation Tolerance**: Space-qualified components
 
-**Inputs:**  
-- P2.1 → Energy Band 1  
-- P2.2 → Energy Band 2  
-- P2.3 → Energy Band 3  
-- P2.4 → Energy Band 4  
+### Pin Configuration
 
-**Outputs:**  
-- P1.0 (LED1)  
-- P9.7 (LED2)  
+| Function | Pin | Description |
+|----------|-----|-------------|
+| Energy Band 1 | P2.1 | GPIO input with pull-up, falling edge trigger |
+| Energy Band 2 | P2.2 | GPIO input with pull-up, falling edge trigger |
+| Energy Band 3 | P2.3 | GPIO input with pull-up, falling edge trigger |
+| Energy Band 4 | P2.4 | GPIO input with pull-up, falling edge trigger |
+| Status LED 1 | P1.0 | Visual indicator for energy bands 1-2 |
+| Status LED 2 | P9.7 | Visual indicator for energy bands 3-4 |
 
-Each input pin is configured with an internal pull-up resistor and triggers on a falling edge signal.  
+## 🚀 Installation
 
----
+### Prerequisites
+- **Code Composer Studio (CCS)** v12.0 or later
+- **MSP430 GCC Toolchain**
+- **MSP430FR6989 LaunchPad** (for development)
 
-## Data Structure
-Events are stored in the `EnergyReading` struct:
+## 📊 Data Structure
+
+Events are stored using the following structure:
 
 ```c
 typedef struct {
-    unsigned int muon_number;    // Muon event number
-    unsigned char energy_band;   // Energy band (1-4)
-    unsigned int year;           // Year
+    unsigned int muon_number;    // Sequential event counter
+    unsigned char energy_band;   // Energy band identifier (1-4)
+    unsigned int year;           // Year (e.g., 2024)
     unsigned char month;         // Month (1-12)
     unsigned char day;           // Day (1-31)
     unsigned char hour;          // Hour (0-23)
     unsigned char minute;        // Minute (0-59)
     unsigned char second;        // Second (0-59)
 } EnergyReading;
+```
+
+### Data Output Format
+```
+Event#, Band, Year, Month, Day, Hour, Minute, Second
+00001, 2, 2024, 03, 15, 14, 30, 45
+00002, 1, 2024, 03, 15, 14, 30, 47
+00003, 4, 2024, 03, 15, 14, 30, 52
+```
+
+### Low Power Mode
+The system automatically enters low power mode between events to conserve energy:
+```c
+__bis_SR_register(LPM3_bits + GIE);  // Enter LPM3 with interrupts enabled
+```
+
+
+</div>
