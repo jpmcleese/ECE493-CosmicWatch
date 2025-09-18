@@ -4,6 +4,7 @@
 //    | |   _| || |__| | | \ \
 //    |_|  |_____\_____|_|  \_\
 //
+// Tiny Intsrument For Gathering Radiation
 // Date: 9/11/2025
 // Version: 2.0
 // Authors: Kevin Nguyen, Daniel Uribe, Arda Cobanoglu, JP Mcleese III
@@ -51,7 +52,9 @@ void save_reading(unsigned char band) {
     }
     else
     {
-        /* save to sdcard and reset the array for more space */
+        /* save to sdcard and reset the array for more space 
+            SD CARD CODE GOES HERE
+        */
     }
     
     // Note: If array is full, oldest data gets lost.
