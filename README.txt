@@ -3,14 +3,13 @@
 [![Platform](https://img.shields.io/badge/Platform-MSP430-blue.svg)](https://www.ti.com/microcontrollers-mcus-processors/msp430-microcontrollers/overview.html)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
 
-## 🔬 Overview
-
-TIGR is an embedded system designed to detect and log muon events across **four distinct energy bands**. Built for the **MSP430FR5969 microcontroller**, 
+## 📖 Overview
+TIGR is an embedded system designed to detect and log muon events across **four distinct energy bands**. Built for the **MSP430FR5969 microcontroller**,
 this instrument provides interrupt-driven detection with precision timestamping using the integrated Real-Time Clock (RTC).
 
 The system is optimized for low-power operation and designed with space-grade deployment in mind, making it suitable for satellite and high-altitude applications.
 
-## ✨ Features
+## Features
 
 - **Multi-band Detection**: Simultaneous monitoring of 4 energy bands via GPIO interrupt pins
 - **Precision Timestamping**: RTC-based event logging with full date/time resolution
@@ -20,7 +19,7 @@ The system is optimized for low-power operation and designed with space-grade de
 - **Interrupt-Driven**: Efficient event capture using falling-edge GPIO interrupts
 - **Space-Qualified**: Designed for deployment on MSP430FR5989-SP hardware
 
-## 🔧 Hardware Requirements
+## Hardware Requirements
 
 ### Development Platform
 - **MCU**: [MSP430FR6989 LaunchPad Development Kit](https://www.ti.com/tool/MSP-EXP430FR6989)
@@ -43,14 +42,14 @@ The system is optimized for low-power operation and designed with space-grade de
 | Status LED 1 | P1.0 | Visual indicator for energy bands 1-2 |
 | Status LED 2 | P9.7 | Visual indicator for energy bands 3-4 |
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 - **Code Composer Studio (CCS)** v12.0 or later
 - **MSP430 GCC Toolchain**
 - **MSP430FR6989 LaunchPad** (for development)
 
-## 📊 Data Structure
+## Data Structure
 
 Events are stored using the following structure:
 
