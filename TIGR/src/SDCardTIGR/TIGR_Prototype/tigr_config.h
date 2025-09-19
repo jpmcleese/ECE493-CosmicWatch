@@ -6,7 +6,6 @@
 
 #include <msp430.h>
 #include <string.h>
-#include <stdio.h>
 
 // Structure to store energy band readings with timestamp
 typedef struct {
@@ -17,11 +16,11 @@ typedef struct {
     unsigned char day;           // Day (1-31)
     unsigned char hour;          // Hour (0-23)
     unsigned char minute;        // Minute (0-59)
-    unsigned char second;        // Second (0-59)
+    unsigned int second;        // Second (0-59)
 } EnergyReading;
 
 // Configuration Constants
-#define MAX_READINGS 100         // Number of readings before SD write
+#define MAX_READINGS 1         // Number of readings before SD write
 #define SD_BUFFER_SIZE 512       // SD card sector size
 
 // Global Variables (extern declarations)
