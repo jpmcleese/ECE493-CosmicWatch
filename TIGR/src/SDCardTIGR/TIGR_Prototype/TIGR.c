@@ -15,6 +15,7 @@
 
 #include "tigr_config.h"
 #include "tigr_mmc.h"
+#include "UART.h"
 
 // Global Variables
 EnergyReading readings[MAX_READINGS];
@@ -55,6 +56,19 @@ void write_readings_to_sd(void) {
     unsigned int i;
     char data_string[64];
     
+    sprintf(data_string, "%u,%u,%04X-%02X-%02X,%02X:%02X:%02X\n",
+            readings[i].muon_number,
+            readings[i].energy_band,
+            readings[i].year,
+            readings[i].month,
+            readings[i].day,
+            readings[i].hour,
+            readings[i].minute,
+            readings[i].second);
+    UART1string("Data is: ");
+    UART1string(data_string);
+    UART1string("\r\n");
+
     if (!sd_initialized) {
         // Try to initialize SD card if not already done
         sd_card_init();
@@ -212,6 +226,9 @@ void msp_init(void) {
     
     RTCCTL1 &= ~(RTCHOLD);                  // Start RTC
     
+    UART1init(115200);          // configure back channel UART
+    UCA1IE |= UCRXIE;           // Enable USCI_A1 RX interrupt
+
     __enable_interrupt();         // Enable global interrupts
     
     P1OUT &= ~BIT0;               // Initialize LEDs to off
@@ -238,6 +255,7 @@ int main(void) {
 
 #pragma vector=PORT2_VECTOR       // ISR for Port 2
 __interrupt void ISRP1(void) {
+    UART1string("Interrupt!\n\r");
     if(P2IFG & BIT4) {            // Energy band 4 caused the interrupt
         P1OUT |= BIT0;            // 1 1
         P9OUT |= BIT7;
