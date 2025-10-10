@@ -16,7 +16,8 @@ typedef struct {
     unsigned char day;           // Day (1-31)
     unsigned char hour;          // Hour (0-23)
     unsigned char minute;        // Minute (0-59)
-    unsigned int second;        // Second (0-59)
+    unsigned int second;         // Second (0-59)
+    int temperature;             // Temperature in Celsius
 } EnergyReading;
 
 // Configuration Constants
@@ -37,5 +38,11 @@ void save_reading(unsigned char band);
 void write_readings_to_sd(void);
 void flush_buffer_to_sd(void);
 void sd_card_init(void);
+void adc_init(void);
+int read_temperature(void);
+void uint_to_string(unsigned int num, char* str);
+void bcd_to_string(unsigned char bcd, char* str);
+void hex_to_string_4(unsigned int hex, char* str);
+void int_to_string(int num, char* str);
 
 #endif /* _TIGR_CONFIG_H */
