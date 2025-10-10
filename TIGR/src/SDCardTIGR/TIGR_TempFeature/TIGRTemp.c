@@ -1,13 +1,13 @@
-//  _______ _____ _____ _____
-// |__   __|_   _/ ____|  __ \
-//    | |    | || |  __| |__) |
-//    | |    | || | |_ |  _  /
-//    | |   _| || |__| | | \ \
-//    |_|  |_____\_____|_|  \_\
+//  _______ _____ _____ _____   _______ 
+// |__   __|_   _/ ____|  __ \ |__   __|
+//    | |    | || |  __| |__) |   | |   
+//    | |    | || | |_ |  _  /    | |   
+//    | |   _| || |__| | | \ \    | |   
+//    |_|  |_____\_____|_|  \_\   |_|   
 //
-//  Tiny Instrument for Gathering Radiation (TIGR)
-//  Version: 2.3
-//  Date: 10/09/2025
+//  Tiny Instrument for Gathering Radiation and Temperature (TIGR)
+//  Version: 2.3 + Temperature Sensor Integration
+//  Date: 10/9/2025
 //
 //  Authors:
 //    - Kevin Nguyen
@@ -16,14 +16,17 @@
 //    - JP McLeese III
 //
 //  Description:
-//    This version of TIGR detects radiation events using four comparator inputs,
-//    each representing a separate energy band. Falling-edge interrupts record
-//    which energy band was triggered, with priority assigned to higher-energy
-//    events. Data is buffered and written directly to the SD card.
+//    This version of TIGR extends Version 2.3 with an onboard temperature sensor
+//    using the MSP430’s internal ADC. A separate file was created for this feature,
+//    since the ADC was initially avoided to minimize power consumption on
+//    coin-cell-powered systems.
 //
 //  Changelog:
 //    - Added UART debug messages showing what would be written to the SD card
 //      (to be removed in the final release).
+//
+//    - Integrated MSP430 internal temperature sensor to log on-chip temperature (°C)
+//      at each interrupt event.
 //
 //    - Fixed buffer issue that prevented correct muon event storage.
 //
@@ -32,6 +35,15 @@
 //    - Note: SD card data is written in raw sector format — a hex editor
 //      is required to view contents since no FAT filesystem is used
 //      (excluded to save power and memory).
+//
+//  Power Impact Note (From Frank):
+//    - The MSP430 internal temperature sensor and ADC draw power only while active.
+//    - During conversion, the ADC + reference consume ≈200–250 µA for ~1–2 ms.
+//      → Sampling once per second ≈ 0.25 µA average current (minimal impact).
+//      → Sampling once per minute or on rare events ≈ 0.004 µA (negligible).
+//      → Continuous operation ≈ 250 µA (significant drain; not recommended).
+//    - Best practice: enable ADC only when needed (e.g., at muon interrupts),
+//      then power it down immediately after conversion. (Changes must be implemented to code)
 
 
 #include "tigr_config.h"
@@ -77,6 +89,47 @@ void uint_to_string(unsigned int num, char* str) {
     }
 }
 
+// Helper function to convert signed int to string (for temperature)
+void int_to_string(int num, char* str) {
+    int i = 0;
+    int j;
+    char temp;
+    int is_negative = 0;
+    
+    // Handle negative numbers
+    if (num < 0) {
+        is_negative = 1;
+        num = -num;
+    }
+    
+    // Handle 0 case
+    if (num == 0) {
+        str[0] = '0';
+        str[1] = '\0';
+        return;
+    }
+    
+    // Convert number to string (reversed)
+    while (num > 0) {
+        str[i++] = '0' + (num % 10);
+        num /= 10;
+    }
+    
+    // Add minus sign if negative
+    if (is_negative) {
+        str[i++] = '-';
+    }
+    
+    str[i] = '\0';
+    
+    // Reverse the string
+    for (j = 0; j < i/2; j++) {
+        temp = str[j];
+        str[j] = str[i-1-j];
+        str[i-1-j] = temp;
+    }
+}
+
 // Helper to convert 2-digit BCD to string
 void bcd_to_string(unsigned char bcd, char* str) {
     str[0] = '0' + ((bcd >> 4) & 0x0F);  // High nibble
@@ -93,7 +146,72 @@ void hex_to_string_4(unsigned int hex, char* str) {
     str[4] = '\0';
 }
 
-// Display buffer contents to UART
+// Initialize ADC for temperature sensing
+void adc_init(void) {
+    // Configure REF module first
+    while(REFCTL0 & REFGENBUSY);               // Wait if reference generator is busy
+    REFCTL0 = REFVSEL_0 | REFON;               // Enable internal 1.2V reference
+    
+    // Wait for reference to settle (minimum 75us at 1MHz = 75 cycles)
+    __delay_cycles(8000);                      // 8ms to be safe
+    
+    // Configure ADC12 - Use longest sampling time for temp sensor
+    ADC12CTL0 = ADC12SHT0_15 | ADC12ON;        // 512 ADC12CLK cycles sampling, ADC12 on
+    ADC12CTL1 = ADC12SHP;                      // Use sampling timer, MODCLK source
+    ADC12CTL2 = ADC12RES_2;                    // 12-bit resolution
+    ADC12CTL3 = ADC12TCMAP;                    // Enable internal temperature sensor
+    ADC12MCTL0 = ADC12VRSEL_1 | ADC12INCH_30;  // VR+ = VREF, VR- = AVSS, Channel A30 (temp sensor)
+    ADC12IER0 = 0x0000;                        // Disable interrupts
+    
+    // Additional settling time for temperature sensor
+    __delay_cycles(8000);
+}
+
+// Read temperature from internal sensor
+int read_temperature(void) {
+    unsigned int adc_value;
+    long temp;
+    
+    // Wait for reference to be ready
+    while(!(REFCTL0 & REFGENRDY));
+    
+    // Enable conversions
+    ADC12CTL0 |= ADC12ENC;
+    
+    // Start conversion
+    ADC12CTL0 |= ADC12SC;
+    
+    // Wait for conversion to complete
+    while (ADC12CTL1 & ADC12BUSY);
+    
+    // Read result
+    adc_value = ADC12MEM0;
+    
+    // Disable conversions
+    ADC12CTL0 &= ~ADC12ENC;
+    
+    // Get calibration values from TLV for FR6989
+    // These are factory-calibrated values for 30°C and 85°C at 1.2V ref
+    unsigned int cal_30 = *((unsigned int *)0x1A1A);   // CAL_ADC_12T30
+    unsigned int cal_85 = *((unsigned int *)0x1A1C);   // CAL_ADC_12T85
+    
+    // Verify calibration data is valid (not erased flash = 0xFFFF)
+    if (cal_30 == 0xFFFF || cal_85 == 0xFFFF || cal_85 == cal_30) {
+        // No valid calibration data, return error value
+        return -273;  // Absolute zero as error indicator
+    }
+    
+    // Calculate temperature using calibration
+    // Temp = ((ADC - CAL30) * (85 - 30)) / (CAL85 - CAL30) + 30
+    temp = (long)adc_value - (long)cal_30;
+    temp = temp * 55;  // (85 - 30)
+    temp = temp / ((long)cal_85 - (long)cal_30);
+    temp = temp + 30;
+    
+    return (int)temp;
+}
+
+// Display buffer contents to UART (for debugging without SD card)
 void display_buffer_contents(void) {
     unsigned int i;
     
@@ -133,7 +251,10 @@ void save_reading(unsigned char band) {
         readings[reading_count].minute = RTCMIN;
         readings[reading_count].second = RTCSEC;
         
-        // DEBUG: Show raw RTC values
+        // Read temperature
+        readings[reading_count].temperature = read_temperature();
+        
+        // DEBUG: Show raw RTC values and temperature
         UART1string("  [RTC Debug] Year=0x");
         char debug_str[6];
         hex_to_string_4(readings[reading_count].year, debug_str);
@@ -153,7 +274,11 @@ void save_reading(unsigned char band) {
         UART1string(":");
         bcd_to_string((unsigned char)readings[reading_count].second, debug_str);
         UART1string((unsigned char*)debug_str);
-        UART1string("\r\n");
+        UART1string(" Temp=");
+        char temp_str[12];
+        int_to_string(readings[reading_count].temperature, temp_str);
+        UART1string((unsigned char*)temp_str);
+        UART1string("C\r\n");
         
         reading_count++;
         
@@ -174,10 +299,11 @@ void save_reading(unsigned char band) {
     }
 }
 
+
 // Write readings to SD card
 void write_readings_to_sd(void) {
     unsigned int i, j;
-    char muon_str[12], band_str[4];
+    char muon_str[12], band_str[4], temp_str[12];
     char year_str[6], month_str[4], day_str[4];
     char hour_str[4], min_str[4], sec_str[4];
     
@@ -203,6 +329,7 @@ void write_readings_to_sd(void) {
         bcd_to_string(readings[i].hour, hour_str);
         bcd_to_string(readings[i].minute, min_str);
         bcd_to_string((unsigned char)readings[i].second, sec_str);
+        int_to_string(readings[i].temperature, temp_str);
         
         // Display row header
         UART1string("  Row ");
@@ -212,7 +339,7 @@ void write_readings_to_sd(void) {
         UART1string(": ");
         
         // Build the CSV line manually and add to buffer
-        // Format: "Muon#,Band,YYYY-MM-DD,HH:MM:SS\n"
+        // Format: "Muon#,Band,YYYY-MM-DD,HH:MM:SS,Temperature\n"
         
         // Add muon number
         for (j = 0; muon_str[j] != '\0'; j++) {
@@ -266,6 +393,14 @@ void write_readings_to_sd(void) {
         for (j = 0; j < 2; j++) {
             sd_buffer[buffer_position++] = sec_str[j];
             UART1send(sec_str[j]);
+        }
+        sd_buffer[buffer_position++] = ',';
+        UART1send(',');
+        
+        // Add temperature
+        for (j = 0; temp_str[j] != '\0'; j++) {
+            sd_buffer[buffer_position++] = temp_str[j];
+            UART1send(temp_str[j]);
         }
         sd_buffer[buffer_position++] = '\n';
         UART1string("\r\n");
@@ -328,7 +463,7 @@ void flush_buffer_to_sd(void) {
 void sd_card_init(void) {
     unsigned char retry_count = 0;
     
-    UART1string("\r\n======== SD Card Initialization ========\r\n");
+    UART1string("\r\n========= SD Card Initialization ========\r\n");
     UART1string("Checking for card presence...\r\n");
     
     // Wait for card to be inserted
@@ -384,6 +519,7 @@ void msp_init(void) {
     WDTCTL = WDTPW | WDTHOLD;     // stop watchdog timer
     PM5CTL0 &= ~LOCKLPM5;         // Unlock ports from power manager
     
+    // Initialize UART FIRST so we can debug
     UART1init(115200);
     __delay_cycles(200000);       // Let UART stabilize
     
@@ -426,7 +562,7 @@ void msp_init(void) {
     P2IFG &= ~BIT4;               // Clear the P2.4 interrupt flag
     P2IE  |=  BIT4;               // Enable P2.4 interrupt
     
-    // RTC Initialization
+    // RTC Initialization with proper sequencing
     RTCCTL0_H = RTCKEY_H;                   // Unlock RTC
     RTCCTL1 = RTCBCD | RTCHOLD | RTCMODE;   // BCD mode, Calendar mode, Hold
     
@@ -439,8 +575,12 @@ void msp_init(void) {
     RTCMIN = 0x00;                          // Minute 
     RTCSEC = 0x00;                          // Seconds 
     
+    
     RTCCTL1 &= ~(RTCHOLD);                  // Start RTC
     RTCCTL0_H = 0;                          // Lock RTC
+    
+    // Initialize ADC for temperature sensing
+    adc_init();
 
     UCA1IE |= UCRXIE;           // Enable USCI_A1 RX interrupt
     __enable_interrupt();       // Enable global interrupts
@@ -458,7 +598,7 @@ int main(void) {
     // Send startup message
     UART1string("\r\n\r\n");
     UART1string("***************************************\r\n");
-    UART1string("*   TIGR - Radiation Detector v2.3    *\r\n");
+    UART1string("*   TIGR-T - Radiation Detector v2.3  *\r\n");
     UART1string("*    DEBUG MODE: SD Buffer Display    *\r\n");
     UART1string("***************************************\r\n");
     UART1string("System initializing...\r\n\r\n");
@@ -491,12 +631,49 @@ int main(void) {
     bcd_to_string(RTCSEC, rtc_str);
     UART1string((unsigned char*)rtc_str);
     UART1string("\r\n========================================\r\n\r\n");
-
+    
+    // Test temperature sensor
+    UART1string("======= Temperature Sensor Test ========\r\n");
+    
+    // Read and display raw ADC and calibration values
+    while(!(REFCTL0 & REFGENRDY));  // Wait for reference
+    ADC12CTL0 |= ADC12ENC | ADC12SC;
+    while (ADC12CTL1 & ADC12BUSY);
+    unsigned int raw_adc = ADC12MEM0;
+    ADC12CTL0 &= ~ADC12ENC;
+    
+    unsigned int cal_30 = *((unsigned int *)0x1A1A);
+    unsigned int cal_85 = *((unsigned int *)0x1A1C);
+    
+    UART1string("Raw ADC Value: ");
+    char debug_val[12];
+    uint_to_string(raw_adc, debug_val);
+    UART1string((unsigned char*)debug_val);
+    UART1string(" (should be ~2400-2600 at room temp)\r\n");
+    
+    UART1string("CAL_30C Value: ");
+    uint_to_string(cal_30, debug_val);
+    UART1string((unsigned char*)debug_val);
+    UART1string("\r\n");
+    
+    UART1string("CAL_85C Value: ");
+    uint_to_string(cal_85, debug_val);
+    UART1string((unsigned char*)debug_val);
+    UART1string("\r\n");
+    
+    int current_temp = read_temperature();
+    UART1string("Calculated Temperature: ");
+    char temp_str[12];
+    int_to_string(current_temp, temp_str);
+    UART1string((unsigned char*)temp_str);
+    UART1string(" C\r\n");
+    UART1string("========================================\r\n\r\n");
+    
     sd_card_init();  // Initialize SD card
     
     // Optional: Write header to SD card
     UART1string("Writing CSV header to buffer...\r\n");
-    strcpy((char*)sd_buffer, "Muon#,Band,Date,Time\n");
+    strcpy((char*)sd_buffer, "Muon#,Band,Date,Time,TempC\n");
     buffer_position = strlen((char*)sd_buffer);
     UART1string("Header prepared: ");
     UART1string(sd_buffer);
