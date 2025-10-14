@@ -32,7 +32,7 @@
 //      is required to view contents since no FAT filesystem is used
 //      (excluded to save power and memory).
 //
-//    - SD Card functionality complete. Refer to tigr_mmc.c for wiring guide!
+//    - SD Card functionality complete. Refer to tigr_mmc.h for wiring guide!
 //
 //  Next Steps: 
 //    - Test SD card via a Coin battery powered MSP430 Launchpad to ensure program works
