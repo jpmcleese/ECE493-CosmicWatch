@@ -48,6 +48,18 @@ The system is optimized for low-power operation and designed with space-grade de
 - **Code Composer Studio (CCS)** v12.0 or later
 - **MSP430 GCC Toolchain**
 - **MSP430FR6989 LaunchPad** (for development)
+- **SD Card Breakout Board**
+
+## SD Card Pin Configuration
+| Function | Pin | Description |
+|----------|-----|-------------|
+| SCLK | P1.4 | System clock connection |
+| MOSI | P1.6 | Master Out Slave In connection |
+| MISO | P1.7 | Master In Slave Out connection |
+| CS | P1.3 | Chip Select |
+| Card Detect | P1.5 | Determine if card is inserted |
+| 3.3V | 3.3V Source | MSP430 3.3V source |
+| GND | Ground | MSP430 0V pin |
 
 ## Data Structure
 
@@ -55,24 +67,26 @@ Events are stored using the following structure:
 
 ```c
 typedef struct {
-    unsigned int muon_number;    // Sequential event counter
-    unsigned char energy_band;   // Energy band identifier (1-4)
-    unsigned int year;           // Year (e.g., 2024)
+    unsigned int muon_number;    // Muon event number
+    unsigned char energy_band;   // Energy band (1-4)
+    unsigned int year;           // Year
     unsigned char month;         // Month (1-12)
     unsigned char day;           // Day (1-31)
     unsigned char hour;          // Hour (0-23)
     unsigned char minute;        // Minute (0-59)
-    unsigned char second;        // Second (0-59)
+    unsigned int second;         // Second (0-59)
+    int temperature;             // Temperature in Celsius
 } EnergyReading;
+
 ```
 
 ### Data Output Format
 
 ```
-Event#, Band, Year, Month, Day, Hour, Minute, Second
-00001, 2, 2024, 03, 15, 14, 30, 45
-00002, 1, 2024, 03, 15, 14, 30, 47
-00003, 4, 2024, 03, 15, 14, 30, 52
+Event#, Band, Year, Month, Day, Hour, Minute, Second, Temperature (Celsius)
+00001, 2, 2025, 03, 15, 14, 30, 45, 25
+00002, 1, 2025, 03, 15, 14, 30, 47, 25
+00003, 4, 2025, 03, 15, 14, 30, 52, 25
 ```
 
 ## Low Power Mode

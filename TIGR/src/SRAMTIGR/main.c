@@ -13,6 +13,7 @@
 // with priority to higher energy band. Currently displays energy band to on board LEDs and does
 // not save energy band onto RAM.
 //
+// Unlikely to develop further as SD card is almost necessary for our design
 
 #include <msp430.h>
 

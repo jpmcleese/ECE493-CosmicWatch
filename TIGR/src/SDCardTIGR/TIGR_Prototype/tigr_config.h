@@ -5,7 +5,6 @@
 #define _TIGR_CONFIG_H
 
 #include <msp430.h>
-#include <string.h>
 
 // Structure to store energy band readings with timestamp
 typedef struct {
@@ -21,7 +20,7 @@ typedef struct {
 } EnergyReading;
 
 // Configuration Constants
-#define MAX_READINGS 1         // Number of readings before SD write
+#define MAX_READINGS 16           // Number of readings before SD write
 #define SD_BUFFER_SIZE 512       // SD card sector size
 
 // Global Variables (extern declarations)
@@ -32,17 +31,5 @@ extern unsigned char sd_buffer[SD_BUFFER_SIZE];
 extern volatile unsigned char sd_initialized;
 extern unsigned long current_sector;
 extern unsigned int buffer_position;
-
-// Function Prototypes
-void save_reading(unsigned char band);
-void write_readings_to_sd(void);
-void flush_buffer_to_sd(void);
-void sd_card_init(void);
-void adc_init(void);
-int read_temperature(void);
-void uint_to_string(unsigned int num, char* str);
-void bcd_to_string(unsigned char bcd, char* str);
-void hex_to_string_4(unsigned int hex, char* str);
-void int_to_string(int num, char* str);
 
 #endif /* _TIGR_CONFIG_H */

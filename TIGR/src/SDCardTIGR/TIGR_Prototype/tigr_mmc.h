@@ -7,15 +7,15 @@
 
 #include <msp430.h>
 
-//-----------------------------------------------------------------------------
-// Pin Definitions for MSP430FR6989
+///-----------------------------------------------------------------------------
+// Pin Definitions for MSP430FR6989 (Updated)
 //-----------------------------------------------------------------------------
 // Using eUSCI_B0 for SPI:
-// P1.4 = UCB0SIMO (MOSI)
-// P1.5 = UCB0SOMI (MISO)  
-// P1.6 = UCB0CLK (SCLK)
+// P1.4 = SCLK
+// P1.6 = MOSI (SIMO)
+// P1.7 = MISO (SOMI)
 // P1.3 = CS (Chip Select) - GPIO
-// P1.2 = Card Detect - GPIO (optional)
+// P1.5 = Card Detect - GPIO (optional)
 
 #define SD_CS_OUT       P1OUT
 #define SD_CS_DIR       P1DIR
@@ -23,12 +23,12 @@
 
 #define SD_CD_IN        P1IN
 #define SD_CD_DIR       P1DIR
-#define SD_CD_PIN       BIT2
+#define SD_CD_PIN       BIT5
 
 // Chip Select Macros
 #define CS_HIGH()       SD_CS_OUT |= SD_CS_PIN
 #define CS_LOW()        SD_CS_OUT &= ~SD_CS_PIN
-#define CARD_PRESENT()  (!(SD_CD_IN & SD_CD_PIN))
+#define CARD_PRESENT()  ((SD_CD_IN & SD_CD_PIN))
 
 //-----------------------------------------------------------------------------
 // MMC/SD Commands (SPI Mode)

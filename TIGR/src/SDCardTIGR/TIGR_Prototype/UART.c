@@ -161,10 +161,3 @@ unsigned char UART1receive(){
     if(~(UCA1IFG & UCRXIFG)) return 0;
     else return UCA1RXBUF;
 }
-
-
-
-
-
-
-

@@ -8,8 +8,9 @@
 // SPI Initialize for MSP430FR6989
 void spi_init(void) {
     // Configure SPI pins
-    P1SEL0 |= BIT4 | BIT5 | BIT6;  // P1.4=UCB0SIMO, P1.5=UCB0SOMI, P1.6=UCB0CLK
-    P1SEL1 &= ~(BIT4 | BIT5 | BIT6);
+    P1SEL0 |= BIT4 | BIT6 | BIT7;   // P1.4=UCB0CLK, P1.6=UCB0SIMO, P1.7=UCB0SOMI
+    P1SEL1 &= ~(BIT4 | BIT6 | BIT7);
+
     
     // Configure CS pin as output
     SD_CS_DIR |= SD_CS_PIN;
@@ -22,7 +23,7 @@ void spi_init(void) {
     
     // Configure eUSCI_B0 for SPI Master mode
     UCB0CTLW0 |= UCSWRST;                      // Put state machine in reset
-    UCB0CTLW0 |= UCMST | UCSYNC | UCCKPL | UCMSB; // 3-pin, 8-bit SPI master
+    UCB0CTLW0 |= UCMST | UCSYNC | UCMSB; // SPI mode 0
     UCB0CTLW0 |= UCSSEL__SMCLK;                // SMCLK as clock source
     UCB0BR0 = 0x02;                            // fBitClock = fSMCLK/2
     UCB0BR1 = 0;
@@ -161,9 +162,9 @@ unsigned char mmc_check_busy(void) {
     do {
         response = spi_send_byte(0xFF);
         i++;
-    } while (response == 0x00 && i < 1000);
+    } while (response == 0x00 && i < 50000);
     
-    return (i < 1000) ? MMC_SUCCESS : MMC_TIMEOUT_ERROR;
+    return (i < 50000) ? MMC_SUCCESS : MMC_TIMEOUT_ERROR;
 }
 
 // Set block length
