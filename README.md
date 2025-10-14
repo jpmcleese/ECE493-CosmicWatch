@@ -58,7 +58,7 @@ The system is optimized for low-power operation and designed with space-grade de
 | MISO | P1.7 | Master In Slave Out connection |
 | CS | P1.3 | Chip Select |
 | Card Detect | P1.5 | Determine if card is inserted |
-| 3.3V | 3.3V Source | MSP430 3.3V source |
+| VCC | 3.3V | MSP430 3.3V source |
 | GND | Ground | MSP430 0V pin |
 
 ## Data Structure
