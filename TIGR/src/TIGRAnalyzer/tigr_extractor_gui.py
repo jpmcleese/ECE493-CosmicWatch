@@ -186,41 +186,35 @@ class TIGRExtractorGUI:
         )
         self.status_label.pack(pady=10)
     
+    # ✅ UPDATED DRIVE DETECTION
     def populate_drives(self):
-        """Populate the drive selection dropdown"""
+        """Populate dropdown with actual physical drives (via WMIC)."""
         try:
-            # Get list of physical drives using wmic
             result = subprocess.run(
-                ['wmic', 'diskdrive', 'get', 'deviceid,size,caption'],
+                ["wmic", "diskdrive", "get", "DeviceID,Caption,Size"],
                 capture_output=True,
                 text=True
             )
-            
+
+            lines = result.stdout.strip().split("\n")[1:]  # Skip header
             drives = []
-            lines = result.stdout.strip().split('\n')[1:]  # Skip header
-            
+
             for line in lines:
-                if line.strip() and 'PHYSICALDRIVE' in line.upper():
-                    # Parse drive info
-                    parts = line.strip().split()
-                    if len(parts) >= 2:
-                        device_id = parts[0]
-                        # Extract drive number
-                        drive_num = device_id.split('PHYSICALDRIVE')[-1]
-                        # Get size in GB
-                        try:
-                            size_bytes = int(parts[1]) if len(parts) > 1 else 0
-                            size_gb = size_bytes / (1024**3)
-                            caption = ' '.join(parts[2:]) if len(parts) > 2 else "Unknown"
-                            
-                            drives.append(f"{device_id} - {size_gb:.1f} GB ({caption})")
-                        except:
-                            drives.append(device_id)
-            
+                parts = line.strip().split()
+                if not parts:
+                    continue
+
+                device_id = parts[0]  # \\.\PHYSICALDRIVE#
+                size_part = parts[-1] if parts[-1].isdigit() else None
+                size_gb = float(size_part) / (1024 ** 3) if size_part else 0
+                caption = " ".join(parts[1:-1]) if size_part else " ".join(parts[1:])
+
+                drives.append(f"{device_id} — {size_gb:.1f} GB ({caption})")
+
             self.drive_combo['values'] = drives
             if drives:
                 self.drive_combo.current(0)
-            
+            self.status_label.config(text=f"Detected {len(drives)} drive(s)")
         except Exception as e:
             messagebox.showerror("Error", f"Could not list drives: {e}")
     
@@ -262,11 +256,10 @@ class TIGRExtractorGUI:
             messagebox.showwarning("No Drive", "Please select a drive first")
             return
         
-        # Extract device ID
-        device_id = drive_selection.split()[0]
+        # ✅ Extract just the device path
+        device_id = drive_selection.split("—")[0].strip()
         output_file = self.output_var.get()
         
-        # Confirm
         result = messagebox.askyesno(
             "Confirm Extraction",
             f"Extract data from:\n{drive_selection}\n\n"
@@ -282,51 +275,39 @@ class TIGRExtractorGUI:
         self.root.update()
         
         try:
-            # Read device
-            with open(f"\\\\.\\{device_id}", 'rb') as device:
+            with open(device_id, 'rb') as device:
                 data = device.read(512 * 1000)  # Read 1000 sectors
             
-            # Convert to text
             text = data.decode('ascii', errors='ignore').replace('\x00', '')
             
-            # Find CSV data
             if "Muon#,Band" not in text:
                 raise ValueError("No TIGR data found on this device")
             
-            # Extract CSV
             start_idx = text.find("Muon#,Band")
             csv_data = text[start_idx:]
             
-            # Parse valid lines
             lines = csv_data.split('\n')
-            valid_lines = []
+            valid_lines = [
+                line for line in lines
+                if ',' in line and line.strip() and ('Muon#' in line or len(line.split(',')) >= 5)
+            ]
             
-            for line in lines:
-                if ',' in line and line.strip():
-                    parts = line.split(',')
-                    if len(parts) >= 5 or 'Muon#' in line:
-                        valid_lines.append(line)
-            
-            # Write to file
             with open(output_file, 'w') as f:
                 f.write('\n'.join(valid_lines))
             
-            count = len(valid_lines) - 1  # Exclude header
+            count = len(valid_lines) - 1
             
             self.status_label.config(
                 text=f"✅ Success! Extracted {count} readings",
                 fg="#059669"
             )
             
-            # Ask to open analyzer
-            result = messagebox.askyesno(
+            if messagebox.askyesno(
                 "Success!",
                 f"Successfully extracted {count} readings!\n\n"
                 f"Saved to: {output_file}\n\n"
                 "Open TIGR Analyzer now?"
-            )
-            
-            if result:
+            ):
                 self.open_analyzer(output_file)
             
         except PermissionError:
@@ -348,7 +329,6 @@ class TIGRExtractorGUI:
         if os.path.exists(analyzer_path):
             abs_path = os.path.abspath(analyzer_path)
             webbrowser.open(f'file:///{abs_path}')
-            
             messagebox.showinfo(
                 "Analyzer Opened",
                 f"TIGR Analyzer opened in your browser!\n\n"
