@@ -203,15 +203,15 @@ class TIGRExtractorGUI:
             for line in lines:
                 if line.strip() and 'PHYSICALDRIVE' in line.upper():
                     parts = line.strip().split()
-                    if len(parts) >= 2:
-                        device_id = parts[0]
-                        try:
-                            size_bytes = int(parts[1]) if len(parts) > 1 else 0
-                            size_gb = size_bytes / (1024**3)
-                            caption = ' '.join(parts[2:]) if len(parts) > 2 else "Unknown"
-                            drives.append(f"{caption} - {size_gb:.1f} GB (Card {device_id})")
-                        except:
-                            drives.append(device_id)
+                    device_id = parts[0]  # e.g., \\.\PHYSICALDRIVE1
+                    try:
+                        size_bytes = int(parts[1]) if len(parts) > 1 else 0
+                        size_gb = size_bytes / (1024**3)
+                        caption = ' '.join(parts[2:]) if len(parts) > 2 else "SD Card"
+                        # Ensure double backslashes
+                        drives.append(f"{caption} - {size_gb:.1f} GB (Card {device_id.replace('\\', '\\\\')})")
+                    except:
+                        drives.append(device_id.replace('\\', '\\\\'))
             
             self.drive_combo['values'] = drives
             if drives:
@@ -258,13 +258,11 @@ class TIGRExtractorGUI:
             messagebox.showwarning("No Drive", "Please select a drive first")
             return
 
-        # ✅ Robust extraction of drive path
-        # Works for text like "SD - 0.9 GB (Card \\.\PHYSICALDRIVE1)"
+        # Robust extraction of drive path
         match = re.search(r'\\\\\.\\PHYSICALDRIVE\d+', drive_selection)
         if match:
             device_id = match.group(0)
         else:
-            # Fallback: try to find PHYSICALDRIVE text even if missing backslashes
             alt_match = re.search(r'PHYSICALDRIVE\d+', drive_selection)
             if alt_match:
                 device_id = f"\\\\.\\{alt_match.group(0)}"
@@ -293,7 +291,6 @@ class TIGRExtractorGUI:
         self.root.update()
         
         try:
-            # ✅ Now safely open the physical drive
             with open(device_id, 'rb') as device:
                 data = device.read(512 * 1000)  # Read 1000 sectors
             
