@@ -11,6 +11,7 @@ import sys
 import os
 import webbrowser
 import ctypes
+import re  # ✅ Added for extracting physical drive name
 
 class TIGRExtractorGUI:
     def __init__(self, root):
@@ -186,35 +187,36 @@ class TIGRExtractorGUI:
         )
         self.status_label.pack(pady=10)
     
-    # ✅ UPDATED DRIVE DETECTION
     def populate_drives(self):
-        """Populate dropdown with actual physical drives (via WMIC)."""
+        """Populate the drive selection dropdown"""
         try:
+            # Get list of physical drives using wmic
             result = subprocess.run(
-                ["wmic", "diskdrive", "get", "DeviceID,Caption,Size"],
+                ['wmic', 'diskdrive', 'get', 'deviceid,size,caption'],
                 capture_output=True,
                 text=True
             )
-
-            lines = result.stdout.strip().split("\n")[1:]  # Skip header
+            
             drives = []
-
+            lines = result.stdout.strip().split('\n')[1:]  # Skip header
+            
             for line in lines:
-                parts = line.strip().split()
-                if not parts:
-                    continue
-
-                device_id = parts[0]  # \\.\PHYSICALDRIVE#
-                size_part = parts[-1] if parts[-1].isdigit() else None
-                size_gb = float(size_part) / (1024 ** 3) if size_part else 0
-                caption = " ".join(parts[1:-1]) if size_part else " ".join(parts[1:])
-
-                drives.append(f"{device_id} — {size_gb:.1f} GB ({caption})")
-
+                if line.strip() and 'PHYSICALDRIVE' in line.upper():
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        device_id = parts[0]
+                        try:
+                            size_bytes = int(parts[1]) if len(parts) > 1 else 0
+                            size_gb = size_bytes / (1024**3)
+                            caption = ' '.join(parts[2:]) if len(parts) > 2 else "Unknown"
+                            drives.append(f"{caption} - {size_gb:.1f} GB (Card {device_id})")
+                        except:
+                            drives.append(device_id)
+            
             self.drive_combo['values'] = drives
             if drives:
                 self.drive_combo.current(0)
-            self.status_label.config(text=f"Detected {len(drives)} drive(s)")
+            
         except Exception as e:
             messagebox.showerror("Error", f"Could not list drives: {e}")
     
@@ -255,14 +257,20 @@ class TIGRExtractorGUI:
         if not drive_selection:
             messagebox.showwarning("No Drive", "Please select a drive first")
             return
-        
-        # ✅ Extract just the device path
-        device_id = drive_selection.split("—")[0].strip()
+
+        # ✅ Extract proper physical drive ID using regex
+        match = re.search(r'\\\\\.\\PHYSICALDRIVE\d+', drive_selection)
+        if match:
+            device_id = match.group(0)
+        else:
+            raise ValueError(f"Could not find physical drive ID in: {drive_selection}")
+
         output_file = self.output_var.get()
         
+        # Confirm
         result = messagebox.askyesno(
             "Confirm Extraction",
-            f"Extract data from:\n{drive_selection}\n\n"
+            f"Extract data from:\n{device_id}\n\n"
             f"Output to:\n{output_file}\n\n"
             "Continue?"
         )
@@ -275,11 +283,14 @@ class TIGRExtractorGUI:
         self.root.update()
         
         try:
+            # Read device
             with open(device_id, 'rb') as device:
                 data = device.read(512 * 1000)  # Read 1000 sectors
             
+            # Convert to text
             text = data.decode('ascii', errors='ignore').replace('\x00', '')
             
+            # Find CSV data
             if "Muon#,Band" not in text:
                 raise ValueError("No TIGR data found on this device")
             
@@ -302,12 +313,14 @@ class TIGRExtractorGUI:
                 fg="#059669"
             )
             
-            if messagebox.askyesno(
+            result = messagebox.askyesno(
                 "Success!",
                 f"Successfully extracted {count} readings!\n\n"
                 f"Saved to: {output_file}\n\n"
                 "Open TIGR Analyzer now?"
-            ):
+            )
+            
+            if result:
                 self.open_analyzer(output_file)
             
         except PermissionError:
@@ -329,6 +342,7 @@ class TIGRExtractorGUI:
         if os.path.exists(analyzer_path):
             abs_path = os.path.abspath(analyzer_path)
             webbrowser.open(f'file:///{abs_path}')
+            
             messagebox.showinfo(
                 "Analyzer Opened",
                 f"TIGR Analyzer opened in your browser!\n\n"
