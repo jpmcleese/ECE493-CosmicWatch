@@ -258,14 +258,24 @@ class TIGRExtractorGUI:
             messagebox.showwarning("No Drive", "Please select a drive first")
             return
 
-        # ✅ Extract proper physical drive ID using regex
+        # ✅ Robust extraction of drive path
+        # Works for text like "SD - 0.9 GB (Card \\.\PHYSICALDRIVE1)"
         match = re.search(r'\\\\\.\\PHYSICALDRIVE\d+', drive_selection)
         if match:
             device_id = match.group(0)
         else:
-            raise ValueError(f"Could not find physical drive ID in: {drive_selection}")
+            # Fallback: try to find PHYSICALDRIVE text even if missing backslashes
+            alt_match = re.search(r'PHYSICALDRIVE\d+', drive_selection)
+            if alt_match:
+                device_id = f"\\\\.\\{alt_match.group(0)}"
+            else:
+                messagebox.showerror("Error", f"Could not detect a valid drive path from:\n{drive_selection}")
+                return
 
-        output_file = self.output_var.get()
+        output_file = self.output_var.get().strip()
+        if not output_file:
+            messagebox.showwarning("No Output File", "Please choose an output file location")
+            return
         
         # Confirm
         result = messagebox.askyesno(
@@ -283,14 +293,12 @@ class TIGRExtractorGUI:
         self.root.update()
         
         try:
-            # Read device
+            # ✅ Now safely open the physical drive
             with open(device_id, 'rb') as device:
                 data = device.read(512 * 1000)  # Read 1000 sectors
             
-            # Convert to text
             text = data.decode('ascii', errors='ignore').replace('\x00', '')
             
-            # Find CSV data
             if "Muon#,Band" not in text:
                 raise ValueError("No TIGR data found on this device")
             
@@ -334,6 +342,7 @@ class TIGRExtractorGUI:
             messagebox.showerror("Error", f"Extraction failed:\n{str(e)}")
         finally:
             self.extract_btn.config(state=tk.NORMAL)
+
     
     def open_analyzer(self, csv_file):
         """Open the web analyzer"""
