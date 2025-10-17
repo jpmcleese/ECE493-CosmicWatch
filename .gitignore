@@ -45,7 +45,6 @@ TIGR/src/TIGRAnalyzer/*.egg-info/
 # ===============================
 build/
 dist/
-*.exe
 *.dll
 *.manifest
 
