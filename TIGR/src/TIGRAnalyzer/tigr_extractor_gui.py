@@ -343,16 +343,16 @@ class TIGRExtractorGUI:
                 fg="#059669"
             )
             
-            # Ask to open analyzer
-            result = messagebox.askyesno(
+            # Show success message
+            messagebox.showinfo(
                 "Success!",
                 f"Successfully extracted {count} readings!\n\n"
                 f"Saved to: {output_file}\n\n"
-                "Open TIGR Analyzer now?"
+                "Opening TIGR Analyzer..."
             )
             
-            if result:
-                self.open_analyzer(output_file)
+            # Auto-open analyzer
+            self.open_analyzer(output_file)
             
         except PermissionError:
             self.status_label.config(text="❌ Permission denied", fg="#dc2626")
@@ -376,22 +376,31 @@ class TIGRExtractorGUI:
     
     def open_analyzer(self, csv_file):
         """Open the web analyzer"""
-        analyzer_path = "tigr_analyzer.html"
+        # Try auto-loading version first, fall back to regular
+        analyzer_files = ["tigr_analyzer_autoload.html", "tigr_analyzer.html"]
         
-        if os.path.exists(analyzer_path):
-            abs_path = os.path.abspath(analyzer_path)
-            webbrowser.open(f'file:///{abs_path}')
-            
-            messagebox.showinfo(
-                "Analyzer Opened",
-                f"TIGR Analyzer opened in your browser!\n\n"
-                f"Upload the file:\n{csv_file}"
-            )
-        else:
-            messagebox.showinfo(
-                "Manual Upload",
-                f"Open tigr_analyzer.html manually and upload:\n{csv_file}"
-            )
+        for analyzer_path in analyzer_files:
+            if os.path.exists(analyzer_path):
+                abs_path = os.path.abspath(analyzer_path)
+                webbrowser.open(f'file:///{abs_path}')
+                
+                if 'autoload' in analyzer_path:
+                    print(f"✓ Opened auto-loading analyzer")
+                    # File will auto-load if tigr_data.csv is in same directory
+                else:
+                    print(f"✓ Opened standard analyzer")
+                    messagebox.showinfo(
+                        "Upload File",
+                        f"Please upload the extracted data file:\n{csv_file}"
+                    )
+                return
+        
+        # No analyzer found
+        messagebox.showwarning(
+            "Analyzer Not Found",
+            f"Could not find tigr_analyzer.html\n\n"
+            f"Please open it manually and upload:\n{csv_file}"
+        )
 
 def main():
     root = tk.Tk()
