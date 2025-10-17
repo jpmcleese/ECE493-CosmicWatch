@@ -11,7 +11,6 @@ import sys
 import os
 import webbrowser
 import ctypes
-import re  # ✅ Added for extracting physical drive name
 
 class TIGRExtractorGUI:
     def __init__(self, root):
@@ -22,6 +21,9 @@ class TIGRExtractorGUI:
         
         # Check admin rights
         self.is_admin = self.check_admin()
+        
+        # Initialize drive mapping
+        self.drive_map = {}
         
         self.create_widgets()
         self.populate_drives()
@@ -190,32 +192,48 @@ class TIGRExtractorGUI:
     def populate_drives(self):
         """Populate the drive selection dropdown"""
         try:
-            # Get list of physical drives using wmic
+            # Get list of physical drives using wmic with CSV format
             result = subprocess.run(
-                ['wmic', 'diskdrive', 'get', 'deviceid,size,caption'],
+                ['wmic', 'diskdrive', 'get', 'deviceid,size,caption', '/format:csv'],
                 capture_output=True,
                 text=True
             )
             
+            self.drive_map = {}  # Store device ID mapping
             drives = []
-            lines = result.stdout.strip().split('\n')[1:]  # Skip header
+            lines = result.stdout.strip().split('\n')
             
-            for line in lines:
-                if line.strip() and 'PHYSICALDRIVE' in line.upper():
-                    parts = line.strip().split()
-                    device_id = parts[0]  # e.g., \\.\PHYSICALDRIVE1
-                    try:
-                        size_bytes = int(parts[1]) if len(parts) > 1 else 0
-                        size_gb = size_bytes / (1024**3)
-                        caption = ' '.join(parts[2:]) if len(parts) > 2 else "SD Card"
-                        # Ensure double backslashes
-                        drives.append(f"{caption} - {size_gb:.1f} GB (Card {device_id.replace('\\', '\\\\')})")
-                    except:
-                        drives.append(device_id.replace('\\', '\\\\'))
+            for line in lines[1:]:  # Skip header
+                if line.strip() and ',' in line:
+                    parts = [p.strip() for p in line.split(',')]
+                    # CSV format: Node,Caption,DeviceID,Size
+                    if len(parts) >= 4 and 'PHYSICALDRIVE' in parts[2].upper():
+                        caption = parts[1]
+                        device_id = parts[2]  # This is the actual device path
+                        try:
+                            size_bytes = int(parts[3]) if parts[3] else 0
+                            size_gb = size_bytes / (1024**3)
+                            size_mb = size_bytes / (1024**2)
+                            
+                            # Format display string
+                            if size_gb >= 1:
+                                size_str = f"{size_gb:.1f} GB"
+                            else:
+                                size_str = f"{size_mb:.0f} MB"
+                            
+                            display_text = f"{device_id} - {size_str} - {caption}"
+                            drives.append(display_text)
+                            
+                            # Store mapping
+                            self.drive_map[display_text] = device_id
+                        except:
+                            display_text = f"{device_id} - {caption}"
+                            drives.append(display_text)
+                            self.drive_map[display_text] = device_id
             
             self.drive_combo['values'] = drives
             if drives:
-                self.drive_combo.current(0)
+                self.drive_combo.current(len(drives) - 1)  # Select last drive (usually SD card)
             
         except Exception as e:
             messagebox.showerror("Error", f"Could not list drives: {e}")
@@ -257,28 +275,20 @@ class TIGRExtractorGUI:
         if not drive_selection:
             messagebox.showwarning("No Drive", "Please select a drive first")
             return
-
-        # Robust extraction of drive path
-        match = re.search(r'\\\\\.\\PHYSICALDRIVE\d+', drive_selection)
-        if match:
-            device_id = match.group(0)
-        else:
-            alt_match = re.search(r'PHYSICALDRIVE\d+', drive_selection)
-            if alt_match:
-                device_id = f"\\\\.\\{alt_match.group(0)}"
-            else:
-                messagebox.showerror("Error", f"Could not detect a valid drive path from:\n{drive_selection}")
-                return
-
-        output_file = self.output_var.get().strip()
-        if not output_file:
-            messagebox.showwarning("No Output File", "Please choose an output file location")
+        
+        # Get actual device ID from mapping
+        device_id = self.drive_map.get(drive_selection)
+        if not device_id:
+            messagebox.showerror("Error", "Could not determine device path")
             return
+        
+        output_file = self.output_var.get()
         
         # Confirm
         result = messagebox.askyesno(
             "Confirm Extraction",
-            f"Extract data from:\n{device_id}\n\n"
+            f"Extract data from:\n{drive_selection}\n\n"
+            f"Device: {device_id}\n\n"
             f"Output to:\n{output_file}\n\n"
             "Continue?"
         )
@@ -291,33 +301,49 @@ class TIGRExtractorGUI:
         self.root.update()
         
         try:
-            with open(device_id, 'rb') as device:
+            # Read device - use the actual device ID path
+            device_path = device_id
+            
+            print(f"Opening device: {device_path}")  # Debug
+            
+            with open(device_path, 'rb') as device:
                 data = device.read(512 * 1000)  # Read 1000 sectors
             
+            print(f"Read {len(data)} bytes")  # Debug
+            
+            # Convert to text
             text = data.decode('ascii', errors='ignore').replace('\x00', '')
             
+            # Find CSV data
             if "Muon#,Band" not in text:
                 raise ValueError("No TIGR data found on this device")
             
+            # Extract CSV
             start_idx = text.find("Muon#,Band")
             csv_data = text[start_idx:]
             
+            # Parse valid lines
             lines = csv_data.split('\n')
-            valid_lines = [
-                line for line in lines
-                if ',' in line and line.strip() and ('Muon#' in line or len(line.split(',')) >= 5)
-            ]
+            valid_lines = []
             
+            for line in lines:
+                if ',' in line and line.strip():
+                    parts = line.split(',')
+                    if len(parts) >= 5 or 'Muon#' in line:
+                        valid_lines.append(line)
+            
+            # Write to file
             with open(output_file, 'w') as f:
                 f.write('\n'.join(valid_lines))
             
-            count = len(valid_lines) - 1
+            count = len(valid_lines) - 1  # Exclude header
             
             self.status_label.config(
                 text=f"✅ Success! Extracted {count} readings",
                 fg="#059669"
             )
             
+            # Ask to open analyzer
             result = messagebox.askyesno(
                 "Success!",
                 f"Successfully extracted {count} readings!\n\n"
@@ -334,12 +360,19 @@ class TIGRExtractorGUI:
                 "Permission Denied",
                 "Could not read from device. Make sure you're running as Administrator."
             )
+        except FileNotFoundError as e:
+            self.status_label.config(text="❌ Device not found", fg="#dc2626")
+            messagebox.showerror(
+                "Device Not Found",
+                f"Could not open device:\n{device_path}\n\n"
+                f"Error: {str(e)}\n\n"
+                "Try refreshing the drive list."
+            )
         except Exception as e:
             self.status_label.config(text="❌ Extraction failed", fg="#dc2626")
             messagebox.showerror("Error", f"Extraction failed:\n{str(e)}")
         finally:
             self.extract_btn.config(state=tk.NORMAL)
-
     
     def open_analyzer(self, csv_file):
         """Open the web analyzer"""
