@@ -39,15 +39,15 @@ class TIGRExtractorGUI:
         """Create the GUI interface"""
         
         # Header
-        header_frame = tk.Frame(self.root, bg="#1e3a8a", height=80)
+        header_frame = tk.Frame(self.root, bg="#4d66ad", height=80)
         header_frame.pack(fill=tk.X)
         header_frame.pack_propagate(False)
         
         title_label = tk.Label(
             header_frame, 
-            text="🔬 TIGR Data Extractor",
-            font=("Arial", 20, "bold"),
-            bg="#1e3a8a",
+            text="TIGR Data Extractor",
+            font=("Dubai", 20, "bold"),
+            bg="#4d66ad",
             fg="white"
         )
         title_label.pack(pady=20)
@@ -61,7 +61,7 @@ class TIGRExtractorGUI:
             warning_frame = tk.Frame(main_frame, bg="#fef3c7", relief=tk.RAISED, bd=2)
             warning_frame.pack(fill=tk.X, pady=(0, 20))
             
-            warning_icon = tk.Label(warning_frame, text="⚠️", bg="#fef3c7", font=("Arial", 16))
+            warning_icon = tk.Label(warning_frame, text="⚠️", bg="#fef3c7", font=("Dubai", 16))
             warning_icon.pack(side=tk.LEFT, padx=10, pady=10)
             
             warning_text = tk.Label(
@@ -69,7 +69,7 @@ class TIGRExtractorGUI:
                 text="Not running as Administrator!\nClick 'Request Admin' to elevate privileges.",
                 bg="#fef3c7",
                 fg="#92400e",
-                font=("Arial", 10),
+                font=("Dubai", 10),
                 justify=tk.LEFT
             )
             warning_text.pack(side=tk.LEFT, pady=10)
@@ -80,7 +80,7 @@ class TIGRExtractorGUI:
                 command=self.request_admin,
                 bg="#f59e0b",
                 fg="white",
-                font=("Arial", 10, "bold"),
+                font=("Dubai", 10, "bold"),
                 relief=tk.RAISED,
                 cursor="hand2"
             )
@@ -91,18 +91,18 @@ class TIGRExtractorGUI:
             
             admin_label = tk.Label(
                 admin_frame,
-                text="✅ Running with Administrator privileges",
+                text="Running as Administrator",
                 bg="#d1fae5",
                 fg="#065f46",
-                font=("Arial", 10, "bold")
+                font=("Dubai", 10, "bold")
             )
             admin_label.pack(pady=10)
         
         # Step 1: Select Drive
         step1_label = tk.Label(
             main_frame,
-            text="Step 1: Select your SD card drive",
-            font=("Arial", 12, "bold")
+            text="Select SD Card Drive",
+            font=("Dubai", 12, "bold")
         )
         step1_label.pack(anchor=tk.W, pady=(10, 5))
         
@@ -113,7 +113,7 @@ class TIGRExtractorGUI:
         self.drive_combo = ttk.Combobox(
             drive_frame,
             textvariable=self.drive_var,
-            font=("Arial", 10),
+            font=("Dubai", 10),
             state="readonly",
             width=40
         )
@@ -121,17 +121,17 @@ class TIGRExtractorGUI:
         
         refresh_btn = tk.Button(
             drive_frame,
-            text="🔄 Refresh",
+            text="Refresh",
             command=self.populate_drives,
-            font=("Arial", 10)
+            font=("Dubai", 10)
         )
         refresh_btn.pack(side=tk.LEFT)
         
         # Step 2: Output file
         step2_label = tk.Label(
             main_frame,
-            text="Step 2: Choose output location",
-            font=("Arial", 12, "bold")
+            text="Choose Output Location",
+            font=("Dubai", 12, "bold")
         )
         step2_label.pack(anchor=tk.W, pady=(10, 5))
         
@@ -142,24 +142,24 @@ class TIGRExtractorGUI:
         output_entry = tk.Entry(
             output_frame,
             textvariable=self.output_var,
-            font=("Arial", 10),
+            font=("Dubai", 10),
             width=35
         )
         output_entry.pack(side=tk.LEFT, padx=(0, 10))
         
         browse_btn = tk.Button(
             output_frame,
-            text="📁 Browse",
+            text="Browse",
             command=self.browse_output,
-            font=("Arial", 10)
+            font=("Dubai", 10)
         )
         browse_btn.pack(side=tk.LEFT)
         
         # Step 3: Extract
         step3_label = tk.Label(
             main_frame,
-            text="Step 3: Extract data",
-            font=("Arial", 12, "bold")
+            text="Extract Raw Bits",
+            font=("Dubai", 12, "bold")
         )
         step3_label.pack(anchor=tk.W, pady=(10, 5))
         
@@ -168,9 +168,9 @@ class TIGRExtractorGUI:
         
         self.extract_btn = tk.Button(
             button_frame,
-            text="🚀 Extract Data",
+            text="Extract Muon Data",
             command=self.extract_data,
-            font=("Arial", 14, "bold"),
+            font=("Dubai", 14, "bold"),
             bg="#3b82f6",
             fg="white",
             padx=30,
@@ -184,7 +184,7 @@ class TIGRExtractorGUI:
         self.status_label = tk.Label(
             main_frame,
             text="Ready to extract",
-            font=("Arial", 10),
+            font=("Dubai", 10),
             fg="#6b7280"
         )
         self.status_label.pack(pady=10)

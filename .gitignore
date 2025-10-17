@@ -1,2 +1,57 @@
+# ===============================
+# Code Composer Studio (CCS)
+# ===============================
 CCSProject/
+*.launches
+*.opt.tcf
+*.opt.tcf~
+*.pjt
+*.cdtproject
+*.ccsproject
+*.cproject
+*.project
+Debug/
+Release/
+workspace.xml
+.metadata/
+.settings/
+*.log
+*.tmp
+
+# ===============================
+# Theia / VS Code
+# ===============================
 .theia/
+.vscode/
+
+# ===============================
+# Python Build Artifacts
+# ===============================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.spec
+
+# ===============================
+# TIGR Analyzer Build Files
+# ===============================
+TIGR/src/TIGRAnalyzer/build/
+TIGR/src/TIGRAnalyzer/dist/
+TIGR/src/TIGRAnalyzer/*.egg-info/
+
+# ===============================
+# PyInstaller and Dist Outputs
+# ===============================
+build/
+dist/
+*.exe
+*.dll
+*.manifest
+
+# ===============================
+# System / OS Files
+# ===============================
+.DS_Store
+Thumbs.db
+desktop.ini
