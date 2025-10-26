@@ -16,12 +16,17 @@
         <div class="max-w-7xl mx-auto">
             <!-- Header -->
             <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8 border border-blue-500/20">
-                <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 mb-2">
-                    TIGR Muon Data Analyzer
-                </h1>
-                <p class="text-slate-300 text-sm md:text-base">
-                    Upload your raw SD card data to visualize cosmic ray muon detections
+                <div class="flex items-center gap-3 mb-2">
+                    <img src="tigr_logo.png" alt="TIGR Logo" class="w-[150px] h-[150px] rounded-lg shadow-lg">
+                    <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+                         TIGR Muon Data Analyzer
+                    </h1>
+                </div>
+                <p class="text-slate-300 text-sm md:text-base ml-4">
+                    Upload your raw SD card data to visualize cosmic ray muon detections.
                 </p>
+        </div>
+
                 
                 <div class="mt-6">
                     <input
@@ -43,12 +48,12 @@
                         class="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition"
                         style="display: none;"
                     >
-                        🚀 Load tigr_data.csv
+                        Load tigr_data.cs
                     </button>
                     
                     <!-- Drop zone -->
                     <div id="dropZone" class="mt-4 border-2 border-dashed border-slate-600 rounded-lg p-8 text-center text-slate-400 hover:border-blue-500 hover:text-blue-400 transition cursor-pointer">
-                        📂 Or drag and drop your CSV file here
+                        Drag and drop your CSV file here
                     </div>
                 </div>
             </div>
@@ -83,7 +88,7 @@
             <div id="chartsContainer" class="hidden space-y-8">
                 <!-- Energy Distribution -->
                 <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
-                    <h2 class="text-2xl font-bold text-blue-300 mb-4">Energy Band Distribution</h2>
+                    <h2 class="text-2xl font-bold text-white mb-4">Energy Band Distribution</h2>
                     <div class="chart-container">
                         <canvas id="bandChart"></canvas>
                     </div>
@@ -91,7 +96,7 @@
 
                 <!-- Detection Timeline -->
                 <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
-                    <h2 class="text-2xl font-bold text-blue-300 mb-4">Detection Timeline</h2>
+                    <h2 class="text-2xl font-bold text-white mb-4">Detection Timeline</h2>
                     <div class="chart-container">
                         <canvas id="timelineChart"></canvas>
                     </div>
@@ -99,7 +104,7 @@
 
                 <!-- Temperature Chart -->
                 <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
-                    <h2 class="text-2xl font-bold text-blue-300 mb-4">Temperature During Detections</h2>
+                    <h2 class="text-2xl font-bold text-white mb-4">Temperature During Detections</h2>
                     <div class="chart-container">
                         <canvas id="tempChart"></canvas>
                     </div>
@@ -107,7 +112,7 @@
 
                 <!-- Data Table -->
                 <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
-                    <h2 class="text-2xl font-bold text-blue-300 mb-4">Recent Detections (Last 20)</h2>
+                    <h2 class="text-2xl font-bold text-white mb-4">Recent Detections (Last 20)</h2>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left text-slate-300">
                             <thead class="text-xs uppercase bg-slate-700/50">
@@ -129,7 +134,7 @@
             <div id="noDataMessage" class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-12 border border-blue-500/20 text-center">
                 <div class="text-6xl mb-4">📊</div>
                 <h3 class="text-2xl font-bold text-slate-300 mb-2">No Data Loaded</h3>
-                <p class="text-slate-400 mb-6">Upload your TIGR SD card data file to see visualizations</p>
+                <p class="text-slate-400 mb-6">Upload your TIGR SD card data file to see visualizations.</p>
                 <div class="mt-6 text-left max-w-2xl mx-auto bg-slate-900/50 p-6 rounded-lg">
                     <p class="text-sm text-slate-400 mb-2 font-semibold">Expected CSV format:</p>
                     <code class="text-xs text-cyan-400 block whitespace-pre font-mono">Muon#,Band,Date,Time,TempC
@@ -397,7 +402,7 @@
                     const text = await response.text();
                     data = parseData(text);
                     if (data.length > 0) {
-                        document.getElementById('fileName').textContent = '📁 Auto-loaded: tigr_data.csv';
+                        document.getElementById('fileName').textContent = 'Auto-loaded: tigr_data.csv';
                         document.getElementById('fileName').classList.remove('hidden');
                         const stats = calculateStats(data);
                         updateUI(data, stats);
