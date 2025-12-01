@@ -35,10 +35,10 @@ The system is optimized for low-power operation and designed with space-grade de
 
 | Function | Pin | Description |
 |----------|-----|-------------|
-| Energy Band 1 | P2.1 | GPIO input with pull-up, falling edge trigger |
-| Energy Band 2 | P2.2 | GPIO input with pull-up, falling edge trigger |
-| Energy Band 3 | P2.3 | GPIO input with pull-up, falling edge trigger |
-| Energy Band 4 | P2.4 | GPIO input with pull-up, falling edge trigger |
+| Energy Band 4 | P2.1 | GPIO input with pull-up, falling edge trigger |
+| Energy Band 3 | P2.2 | GPIO input with pull-up, falling edge trigger |
+| Energy Band 2 | P2.3 | GPIO input with pull-up, falling edge trigger |
+| Energy Band 1 | P2.4 | GPIO input with pull-up, falling edge trigger |
 | Status LED 1 | P1.0 | Visual indicator for energy bands 1-2 |
 | Status LED 2 | P6.6 | Visual indicator for energy bands 3-4 |
 

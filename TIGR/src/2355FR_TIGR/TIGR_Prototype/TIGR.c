@@ -327,22 +327,22 @@ __interrupt void Timer_B0_ISR(void) {
 __interrupt void ISRP2(void) {
     UART1string("\r\n>>> Muon detected! ");
     
-    if(P2IFG & BIT4) {            // Energy band 4 caused the interrupt
+    if(P2IFG & BIT1) {            // Energy band 4 caused the interrupt
         P1OUT |= BIT0;            // LED1 on
         P6OUT |= BIT6;            // LED2 on (P6.6 on FR2355)
         save_reading(4);
     }
-    else if(P2IFG & BIT3) {       // Energy band 3 caused the interrupt
+    else if(P2IFG & BIT2) {       // Energy band 3 caused the interrupt
         P1OUT |= BIT0;            // LED1 on
         P6OUT &= ~BIT6;           // LED2 off
         save_reading(3);
     }
-    else if(P2IFG & BIT2) {       // Energy band 2 caused the interrupt
+    else if(P2IFG & BIT3) {       // Energy band 2 caused the interrupt
         P1OUT &= ~BIT0;           // LED1 off
         P6OUT |= BIT6;            // LED2 on
         save_reading(2);
     }
-    else if(P2IFG & BIT1) {       // Energy band 1 caused the interrupt
+    else if(P2IFG & BIT4) {       // Energy band 1 caused the interrupt
         P1OUT &= ~BIT0;           // LED1 off
         P6OUT &= ~BIT6;           // LED2 off
         save_reading(1);
