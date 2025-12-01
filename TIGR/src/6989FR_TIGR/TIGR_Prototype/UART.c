@@ -56,7 +56,7 @@ void initClockTo16MHz(){
 
 
 // On-board UART = eUSCI Module 0 Channel A. UCA0RXD=P4.3   UCA0TXD=P4.2
-void UART0init(unsigned long BaudRate){
+void UART1init(unsigned long BaudRate){
     P4SEL0 |=  (BIT3 | BIT2);                 //Configure pin functions:
     P4SEL1 &= ~(BIT3 | BIT2);                 //UCA0RXD=P4.3   UCA0TXD=P4.2
     // Configure PJ.5 PJ.4 for external crystal oscillator
@@ -86,14 +86,14 @@ void UART0init(unsigned long BaudRate){
 }
 
 
-void UART0send(unsigned char data){
+void UART1send(unsigned char data){
     //wait for any ongoing transmission
     while(~(UCA0IFG & UCTXIFG));
     UCA0TXBUF=data;
 }
 
 
-unsigned char UART0receive(){
+unsigned char UART1receive(){
     //return ASAP if no data
     if(~(UCA0IFG & UCRXIFG)) return 0;
     else return UCA0RXBUF;

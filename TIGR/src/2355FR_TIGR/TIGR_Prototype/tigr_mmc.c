@@ -1,29 +1,32 @@
 // tigr_mmc.c
 // MMC/SD Card Interface Implementation for TIGR Project
-// MSP430FR6989 using eUSCI_B0 SPI
+// MSP430FR2355 using eUSCI_B0 SPI
 
 #include "tigr_mmc.h"
 #include "tigr_config.h"
 
-// SPI Initialize for MSP430FR6989
+// SPI Initialize for MSP430FR2355
 void spi_init(void) {
-    // Configure SPI pins
-    P1SEL0 |= BIT1 | BIT2 | BIT3;  // P1.1=UCB0CLK, P1.2=UCB0SIMO, P1.3=UCB0SOMI
+    // Configure SPI pins for FR2355 (TPT package)
+    // P1.1 = UCB0CLK (SCLK)
+    // P1.2 = UCB0SIMO (MOSI)
+    // P1.3 = UCB0SOMI (MISO)
+    P1SEL0 |= BIT1 | BIT2 | BIT3;
     P1SEL1 &= ~(BIT1 | BIT2 | BIT3);
-
     
-    // Configure CS pin as output
+    // Configure CS pin (P1.0) as output
     SD_CS_DIR |= SD_CS_PIN;
     CS_HIGH();
     
-    // Configure Card Detect pin as input with pullup
+    // Configure Card Detect pin (P3.7) as input with pullup
     SD_CD_DIR &= ~SD_CD_PIN;
-    P1REN |= SD_CD_PIN;
-    P1OUT |= SD_CD_PIN;
+    P3REN |= SD_CD_PIN;
+    P3OUT |= SD_CD_PIN;
     
     // Configure eUSCI_B0 for SPI Master mode
     UCB0CTLW0 |= UCSWRST;                      // Put state machine in reset
-    UCB0CTLW0 |= UCMST | UCSYNC | UCMSB; // SPI mode 0
+    UCB0CTLW0 |= UCMST | UCSYNC | UCMSB;       // Master, synchronous, MSB first
+    UCB0CTLW0 |= UCCKPH;                       // Clock phase for SD card (mode 0)
     UCB0CTLW0 |= UCSSEL__SMCLK;                // SMCLK as clock source
     UCB0BR0 = 0x02;                            // fBitClock = fSMCLK/2
     UCB0BR1 = 0;

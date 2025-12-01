@@ -1,7 +1,7 @@
 # ===============================
 # Code Composer Studio (CCS)
 # ===============================
-CCSProject/
+TIGR_CCS/
 *.launches
 *.opt.tcf
 *.opt.tcf~

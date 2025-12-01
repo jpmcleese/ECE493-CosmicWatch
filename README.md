@@ -5,14 +5,14 @@
 
 ## Overview
 
-TIGR is an embedded system designed to detect and log muon events across **four distinct energy bands**. Built for the **MSP430FR5969 microcontroller**, this instrument provides interrupt-driven detection with precision timestamping using the integrated Real-Time Clock (RTC).
+TIGR is an embedded system designed to detect and log muon events across **four distinct energy bands**. Built for the **MSP430FR2355 microcontroller**, this instrument provides interrupt-driven detection with precision timestamping using the integrated Real-Time Clock (RTC).
 
 The system is optimized for low-power operation and designed with space-grade deployment in mind, making it suitable for satellite and high-altitude applications.
 
 ## Features
 
 - **Multi-band Detection**: Simultaneous monitoring of 4 energy bands via GPIO interrupt pins
-- **Precision Timestamping**: RTC-based event logging with full date/time resolution
+- **Precision Timestamping**: MSP430FR2355 does not include a hardware RTC, so TIGR implements a full BCD   timestamping system using Timer_B0
 - **Visual Feedback**: On-board LED indicators for real-time energy band identification  
 - **Low Power Design**: Optimized for energy-efficient operation in space environments
 - **Expandable Storage**: RAM buffer with SD card expansion capability
@@ -22,7 +22,7 @@ The system is optimized for low-power operation and designed with space-grade de
 ## Hardware Requirements
 
 ### Development Platform
-- **MCU**: [MSP430FR6989 LaunchPad Development Kit](https://www.ti.com/tool/MSP-EXP430FR6989)
+- **MCU**: [MSP430FR2355 LaunchPad Development Kit](https://www.ti.com/tool/MSP-EXP430FR2355)
 - **Comparators**: 4x external comparator circuits (one per energy band)
 - **Power Supply**: 3.3V regulated supply
 
@@ -40,26 +40,25 @@ The system is optimized for low-power operation and designed with space-grade de
 | Energy Band 3 | P2.3 | GPIO input with pull-up, falling edge trigger |
 | Energy Band 4 | P2.4 | GPIO input with pull-up, falling edge trigger |
 | Status LED 1 | P1.0 | Visual indicator for energy bands 1-2 |
-| Status LED 2 | P9.7 | Visual indicator for energy bands 3-4 |
+| Status LED 2 | P6.6 | Visual indicator for energy bands 3-4 |
 
 ## Installation
 
 ### Prerequisites
 - **Code Composer Studio (CCS)** v12.0 or later
 - **MSP430 GCC Toolchain**
-- **MSP430FR6989 LaunchPad** (for development)
+- **MSP430FR2355 LaunchPad** (for development)
 - **SD Card Breakout Board**
 
 ## SD Card Pin Configuration
-| Function | Pin | Description |
-|----------|-----|-------------|
-| SCLK | P1.4 | System clock connection |
-| MOSI | P1.6 | Master Out Slave In connection |
-| MISO | P1.7 | Master In Slave Out connection |
-| CS | P1.3 | Chip Select |
-| Card Detect | P1.5 | Determine if card is inserted |
-| VCC | 3.3V | MSP430 3.3V source |
-| GND | Ground | MSP430 0V pin |
+| Function        | Pin      | Notes                     |
+| --------------- | -------- | ------------------------- |
+| SCLK       | P1.1 | UCB0CLK                   |
+| MOSI       | P1.2 | UCB0SIMO D1         |
+| MISO        | P1.3 | UCB0SOMI D0                 |
+| CS         | P1.0 | Dedicated chip-select     |
+| Card Detect | P3.7 | Pull-up enabled, optional |
+
 
 ## Data Structure
 
@@ -91,7 +90,14 @@ Muon#,Band,Date,Time,TempC
 4,3,2025-10-14,12:00:16,23
 5,3,2025-10-14,12:00:16,23
 ```
+### SD Write Strategy
 
+Data is accumulated in sd_buffer
+When full or when MAX_READINGS reached: A 512-byte sector is written via: 
+
+```
+mmc_write_sector(current_sector, sd_buffer);
+```
 ## Low Power Mode
 
 The system automatically enters low power mode between events to conserve energy:

@@ -1,6 +1,6 @@
 // tigr_mmc.h
 // MMC/SD Card Interface Header for TIGR Project
-// MSP430FR6989 Implementation
+// MSP430FR2355 Implementation
 
 #ifndef _TIGR_MMC_H
 #define _TIGR_MMC_H
@@ -8,22 +8,21 @@
 #include <msp430.h>
 
 ///-----------------------------------------------------------------------------
-// Pin Definitions for MSP430FR6989 (Updated)
+// Pin Definitions for MSP430FR2355
 //-----------------------------------------------------------------------------
 // Using eUSCI_B0 for SPI:
-// P1.4 = SCLK
-// P1.6 = MOSI (SIMO)
-// P1.7 = MISO (SOMI)
-// P1.3 = CS (Chip Select) - GPIO
-// P1.5 = Card Detect - GPIO (optional)
+// P1.1 = SCLK
+// P1.2 = MOSI (SIMO) D1
+// P1.3 = MISO (SOMI) D0
+// P1.0 = CS (Chip Select) - GPIO
+// P3.7 = Card Detect - GPIO (Unused in this implementation)
 
 #define SD_CS_OUT       P1OUT
 #define SD_CS_DIR       P1DIR
 #define SD_CS_PIN       BIT0
-
-#define SD_CD_IN        P1IN
-#define SD_CD_DIR       P1DIR
-#define SD_CD_PIN       BIT5
+#define SD_CD_IN        P3IN
+#define SD_CD_DIR       P3DIR
+#define SD_CD_PIN       BIT7
 
 // Chip Select Macros
 #define CS_HIGH()       SD_CS_OUT |= SD_CS_PIN

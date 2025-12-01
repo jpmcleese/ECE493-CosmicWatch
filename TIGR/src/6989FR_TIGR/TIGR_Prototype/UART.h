@@ -7,9 +7,9 @@
 
 #include "msp430.h"
 
-extern void UART0init(unsigned long);
-extern void UART0send(unsigned char);
-extern unsigned char UART0receive();
+extern void UART1init(unsigned long);
+extern void UART1send(unsigned char);
+extern unsigned char UART1receive();
 extern void UART1init(unsigned long);
 extern void UART1send(unsigned char);
 extern void UART1string(unsigned char *);

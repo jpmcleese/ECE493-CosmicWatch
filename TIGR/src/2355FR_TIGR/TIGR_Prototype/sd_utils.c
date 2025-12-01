@@ -1,5 +1,6 @@
 // sd_utils.c
 // SD Card data logging implementation for TIGR project
+// Adapted for MSP430FR2355
 
 #include <string.h>
 #include "sd_utils.h"
@@ -40,7 +41,7 @@ void save_reading(unsigned char band) {
         readings[reading_count].energy_band = band;
         readings[reading_count].muon_number = muon_count;
         
-        // Read current RTC values (they are in BCD format)
+        // Read current software RTC values (they are in BCD format)
         readings[reading_count].year = RTCYEAR;
         readings[reading_count].month = RTCMON;
         readings[reading_count].day = RTCDAY;
