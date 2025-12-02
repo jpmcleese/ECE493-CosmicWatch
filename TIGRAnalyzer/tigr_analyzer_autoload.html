@@ -3,168 +3,600 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TIGR Muon Data Analyzer</title>
+    <title>TIGR Muon Detector - Live Data Explorer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; background: #0f172a; }
-        .chart-container { position: relative; height: 300px; }
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            background: #030712;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        .font-orbitron { font-family: 'Orbitron', monospace; }
+        .font-mono-num { font-family: 'IBM Plex Mono', monospace; }
+        
+        /* Animated background */
+        .cosmic-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(6, 182, 212, 0.08) 0%, transparent 70%),
+                linear-gradient(180deg, #030712 0%, #0f172a 50%, #030712 100%);
+            z-index: -1;
+        }
+        
+        /* Particle effect */
+        .particle {
+            position: fixed;
+            width: 2px;
+            height: 2px;
+            background: rgba(96, 165, 250, 0.6);
+            border-radius: 50%;
+            animation: fall linear infinite;
+            z-index: 0;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        
+        /* Glowing effects */
+        .glow-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1); }
+        .glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.3), 0 0 40px rgba(6, 182, 212, 0.1); }
+        .glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3), 0 0 40px rgba(139, 92, 246, 0.1); }
+        
+        .text-glow {
+            text-shadow: 0 0 10px rgba(96, 165, 250, 0.5), 0 0 20px rgba(96, 165, 250, 0.3);
+        }
+        
+        /* Card styling */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+        
+        /* Stat counter animation */
+        .stat-number {
+            font-family: 'IBM Plex Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+        
+        /* Pulse animation for live indicator */
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Chart container */
+        .chart-container { position: relative; height: 280px; }
+        @media (min-width: 768px) { .chart-container { height: 320px; } }
+        
+        /* Dropdown styling */
+        .custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2360a5fa'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.5em;
+        }
+        
+        /* File upload button styling */
+        .file-upload-btn {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .file-upload-btn input[type="file"] {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 100%;
+            min-height: 100%;
+            font-size: 100px;
+            text-align: right;
+            filter: alpha(opacity=0);
+            opacity: 0;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Fade in animation */
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Scrollable table container */
+        .table-scroll {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* Comparison bar */
+        .comparison-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #22c55e 0%, #3b82f6 33%, #f59e0b 66%, #ef4444 100%);
+        }
     </style>
 </head>
-<body>
-    <div id="app" class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4 md:p-8">
-        <div class="max-w-7xl mx-auto">
-            <!-- Header -->
-            <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8 border border-blue-500/20">
-                <div class="flex items-center gap-3 mb-2">
-                    <img src="tigr_logo.png" alt="TIGR Logo" class="w-[150px] h-[150px] rounded-lg shadow-lg">
-                    <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
-                         TIGR Muon Data Analyzer
-                    </h1>
+<body class="min-h-screen text-white">
+    <div class="cosmic-bg"></div>
+    
+    <!-- Particle container -->
+    <div id="particles"></div>
+    
+    <div class="relative z-10 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <header class="glass-card glow-blue rounded-2xl p-6 md:p-8 mb-6 fade-in">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-4">
+                        <!-- Logo -->
+                        <img src="tigr_logo.png" alt="TIGR Logo" class="w-36 h-36 rounded-xl">
+                        <div>
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-3 h-3 rounded-full bg-cyan-400 pulse-dot"></div>
+                                <span class="text-cyan-400 text-sm font-medium tracking-wider uppercase">Live Data Explorer</span>
+                            </div>
+                            <h1 class="font-orbitron text-3xl md:text-4xl lg:text-5xl font-bold text-glow bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                                TIGR Muon Detector
+                            </h1>
+                            <p class="text-slate-400 mt-2 text-lg">George Mason University Senior Design Project</p>
+                        </div>
+                    </div>
                 </div>
-                <p class="text-slate-300 text-sm md:text-base ml-4">
-                    Upload your raw SD card data to visualize cosmic ray muon detections.
-                </p>
-        </div>
-
                 
-                <div class="mt-6">
-                    <input
-                        type="file"
-                        id="fileInput"
-                        accept=".txt,.csv,.dat"
-                        class="block w-full text-sm text-slate-300
-                            file:mr-4 file:py-2 file:px-4
-                            file:rounded-full file:border-0
-                            file:text-sm file:font-semibold
-                            file:bg-blue-500 file:text-white
-                            hover:file:bg-blue-600 cursor-pointer"
-                    />
-                    <p id="fileName" class="mt-2 text-sm text-cyan-400 hidden"></p>
+                <!-- Data Input Section -->
+                <div class="flex flex-col gap-3">
+                    <!-- Dataset Selector -->
+                    <div class="w-full md:w-auto">
+                        <label class="block text-sm text-slate-400 mb-2 font-medium">Select Dataset</label>
+                        <select id="datasetSelector" class="custom-select w-full md:w-72 bg-slate-800/80 border border-blue-500/30 text-white px-4 py-3 rounded-xl text-lg font-medium focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all cursor-pointer">
+                            <option value="">Choose a test location...</option>
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
                     
-                    <!-- Auto-load button -->
-                    <button
-                        id="autoLoadBtn"
-                        class="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition"
-                        style="display: none;"
-                    >
-                        Load tigr_data.cs
-                    </button>
+                    <!-- OR Divider -->
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                        <span class="text-slate-500 text-sm font-medium">OR</span>
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                    </div>
                     
-                    <!-- Drop zone -->
-                    <div id="dropZone" class="mt-4 border-2 border-dashed border-slate-600 rounded-lg p-8 text-center text-slate-400 hover:border-blue-500 hover:text-blue-400 transition cursor-pointer">
-                        Drag and drop your CSV file here
+                    <!-- Upload Button -->
+                    <div class="file-upload-btn w-full md:w-72 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 border border-purple-400/30 text-white px-4 py-3 rounded-xl text-lg font-medium transition-all text-center glow-purple">
+                        <input type="file" id="csvFileInput" accept=".csv" />
+                        <span class="flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Upload CSV File
+                        </span>
                     </div>
                 </div>
             </div>
-
-            <!-- Stats Cards -->
-            <div id="statsCards" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-                <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-blue-500/20">
-                    <div class="text-slate-400 text-sm mb-1">Total Detections</div>
-                    <div id="totalDetections" class="text-3xl font-bold text-blue-400">0</div>
+        </header>
+        
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden glass-card rounded-2xl p-12 text-center">
+            <div class="spinner mx-auto mb-4"></div>
+            <p class="text-slate-400">Loading muon data...</p>
+        </div>
+        
+        <!-- Welcome State -->
+        <div id="welcomeState" class="glass-card rounded-2xl p-8 md:p-12 text-center fade-in">
+            <div class="text-6xl mb-6">🔬</div>
+            <h2 class="font-orbitron text-2xl md:text-3xl font-bold text-white mb-4">Welcome to the TIGR Data Explorer</h2>
+            <p class="text-slate-400 text-lg max-w-2xl mx-auto mb-6">
+                Select a dataset from the dropdown or upload your own CSV file to explore cosmic ray muon detections.
+            </p>
+            <div id="welcomeStats" class="flex flex-wrap justify-center gap-4 text-sm">
+                <div class="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700">
+                    <span class="text-cyan-400 font-semibold font-mono-num" id="welcomeDatasetCount">0</span> Datasets Available
                 </div>
-                
-                <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-green-500/20">
-                    <div class="text-slate-400 text-sm mb-1">Detection Rate</div>
-                    <div id="detectionRate" class="text-3xl font-bold text-green-400">0</div>
-                    <div class="text-slate-400 text-xs">muons/hour</div>
-                </div>
-                
-                <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-orange-500/20">
-                    <div class="text-slate-400 text-sm mb-1">Avg Temperature</div>
-                    <div id="avgTemp" class="text-3xl font-bold text-orange-400">0°C</div>
-                    <div class="text-slate-400 text-xs italic">during uptime</div>
-                    <div id="tempRange" class="text-slate-400 text-xs mt-1"></div>
-                </div>
-                
-                <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
-                    <div class="text-slate-400 text-sm mb-1">Duration</div>
-                    <div id="duration" class="text-3xl font-bold text-purple-400">0</div>
-                    <div class="text-slate-400 text-xs">hours</div>
+                <div class="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700">
+                    <span class="text-cyan-400 font-semibold font-mono-num">4</span> Energy Bands
                 </div>
             </div>
-
-            <!-- Charts Container -->
-            <div id="chartsContainer" class="hidden space-y-8">
-                <!-- Energy Distribution -->
-                <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
-                    <h2 class="text-2xl font-bold text-white mb-4">Energy Band Distribution</h2>
+            <div class="mt-8 text-left bg-slate-800/50 p-4 rounded-lg max-w-lg mx-auto text-sm">
+                <p class="text-slate-300 mb-2 font-medium">Expected CSV format:</p>
+                <pre class="text-cyan-400 font-mono text-xs overflow-x-auto">Muon#,Band,Date,Time,TempC
+0,4,2025-10-14,12:00:00,23
+1,3,2025-10-14,12:00:05,24</pre>
+            </div>
+        </div>
+        
+        <!-- Main Content (hidden until dataset selected) -->
+        <div id="mainContent" class="hidden space-y-6">
+            
+            <!-- Dataset Info Banner -->
+            <div id="datasetInfo" class="glass-card glow-cyan rounded-xl p-4 fade-in">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h2 id="datasetTitle" class="font-orbitron text-xl font-bold text-cyan-400"></h2>
+                        <p id="datasetDescription" class="text-slate-400 text-sm"></p>
+                    </div>
+                    <div id="datasetBadge" class="px-3 py-1 rounded-full text-sm font-medium"></div>
+                </div>
+            </div>
+            
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-card rounded-xl p-5 border-l-4 border-blue-500 fade-in" style="animation-delay: 0.1s">
+                    <div class="text-slate-400 text-sm mb-1">Total Detections</div>
+                    <div id="statTotal" class="stat-number text-3xl font-bold text-blue-400">0</div>
+                </div>
+                <div class="glass-card rounded-xl p-5 border-l-4 border-green-500 fade-in" style="animation-delay: 0.2s">
+                    <div class="text-slate-400 text-sm mb-1">Detection Rate</div>
+                    <div id="statRate" class="stat-number text-3xl font-bold text-green-400">0</div>
+                    <div class="text-slate-500 text-xs">muons/min</div>
+                </div>
+                <div class="glass-card rounded-xl p-5 border-l-4 border-orange-500 fade-in" style="animation-delay: 0.3s">
+                    <div class="text-slate-400 text-sm mb-1">Avg Temperature</div>
+                    <div id="statTemp" class="stat-number text-3xl font-bold text-orange-400">0°C</div>
+                    <div id="statTempRange" class="text-slate-500 text-xs"></div>
+                </div>
+                <div class="glass-card rounded-xl p-5 border-l-4 border-purple-500 fade-in" style="animation-delay: 0.4s">
+                    <div class="text-slate-400 text-sm mb-1">Duration</div>
+                    <div id="statDuration" class="stat-number text-3xl font-bold text-purple-400">0</div>
+                    <div class="text-slate-500 text-xs">minutes</div>
+                </div>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="grid lg:grid-cols-2 gap-6">
+                <!-- Energy Band Distribution -->
+                <div class="glass-card rounded-2xl p-6 fade-in" style="animation-delay: 0.5s">
+                    <h3 class="font-orbitron text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                        Energy Band Distribution
+                    </h3>
                     <div class="chart-container">
                         <canvas id="bandChart"></canvas>
                     </div>
                 </div>
-
+                
                 <!-- Detection Timeline -->
-                <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
-                    <h2 class="text-2xl font-bold text-white mb-4">Detection Timeline</h2>
+                <div class="glass-card rounded-2xl p-6 fade-in" style="animation-delay: 0.6s">
+                    <h3 class="font-orbitron text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                        Detection Timeline
+                    </h3>
                     <div class="chart-container">
                         <canvas id="timelineChart"></canvas>
                     </div>
                 </div>
-
-                <!-- Temperature Chart -->
-                <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
-                    <h2 class="text-2xl font-bold text-white mb-4">Temperature During Detections</h2>
-                    <div class="chart-container">
-                        <canvas id="tempChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Data Table -->
-                <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
-                    <h2 class="text-2xl font-bold text-white mb-4">Recent Detections (Last 20)</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left text-slate-300">
-                            <thead class="text-xs uppercase bg-slate-700/50">
-                                <tr>
-                                    <th class="px-4 py-3">Muon #</th>
-                                    <th class="px-4 py-3">Band</th>
-                                    <th class="px-4 py-3">Date</th>
-                                    <th class="px-4 py-3">Time</th>
-                                    <th class="px-4 py-3">Temp (°C)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dataTable"></tbody>
-                        </table>
-                    </div>
+            </div>
+            
+            <!-- Temperature Chart -->
+            <div class="glass-card rounded-2xl p-6 fade-in" style="animation-delay: 0.7s">
+                <h3 class="font-orbitron text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+                    Temperature During Detections
+                </h3>
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
                 </div>
             </div>
-
-            <!-- No Data Message -->
-            <div id="noDataMessage" class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-12 border border-blue-500/20 text-center">
-                <div class="text-6xl mb-4">📊</div>
-                <h3 class="text-2xl font-bold text-slate-300 mb-2">No Data Loaded</h3>
-                <p class="text-slate-400 mb-6">Upload your TIGR SD card data file to see visualizations.</p>
-                <div class="mt-6 text-left max-w-2xl mx-auto bg-slate-900/50 p-6 rounded-lg">
-                    <p class="text-sm text-slate-400 mb-2 font-semibold">Expected CSV format:</p>
-                    <code class="text-xs text-cyan-400 block whitespace-pre font-mono">Muon#,Band,Date,Time,TempC
-1,2,2025-10-09,12:00:15,23
-2,1,2025-10-09,12:05:42,23
-3,4,2025-10-09,12:12:08,24</code>
+            
+            <!-- Comparison Section -->
+            <div id="comparisonSection" class="glass-card glow-purple rounded-2xl p-6 fade-in" style="animation-delay: 0.8s">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="font-orbitron text-lg font-bold text-white flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                            Dataset Comparison
+                        </h3>
+                        <p class="text-slate-400 text-sm mt-1">
+                            Compare detection counts across all test locations. Bars show relative detection volume — 
+                            longer bars indicate more muon events captured. The currently selected dataset is highlighted.
+                        </p>
+                    </div>
+                    <div class="flex-shrink-0 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700">
+                        <div class="text-xs text-slate-500 mb-1">Legend</div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <div class="w-3 h-3 rounded bg-gradient-to-r from-cyan-500 to-blue-500"></div>
+                            <span class="text-slate-400">Selected</span>
+                            <div class="w-3 h-3 rounded bg-slate-500 ml-2"></div>
+                            <span class="text-slate-400">Other</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="comparisonGrid" class="grid gap-4">
+                    <!-- Comparison bars will be generated here -->
                 </div>
             </div>
+            
+            <!-- Recent Detections Table -->
+            <div class="glass-card rounded-2xl p-6 fade-in" style="animation-delay: 0.9s">
+                <h3 class="font-orbitron text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                    Recent Detections
+                    <span class="text-sm font-normal text-slate-500 ml-2">(Last 50 events)</span>
+                </h3>
+                <div class="table-scroll overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-slate-900/95 backdrop-blur">
+                            <tr class="text-slate-400 text-left border-b border-slate-700">
+                                <th class="pb-3 pt-2 font-medium">Muon #</th>
+                                <th class="pb-3 pt-2 font-medium">Band</th>
+                                <th class="pb-3 pt-2 font-medium">Time</th>
+                                <th class="pb-3 pt-2 font-medium">Temp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTable" class="text-slate-300"></tbody>
+                    </table>
+                </div>
+            </div>
+            
         </div>
+        
+        <!-- Footer -->
+        <footer class="mt-8 text-center text-slate-500 text-sm fade-in">
+            <p>TIGR Muon Detector Team • ECE 493 Senior Design Fall 2025 • George Mason University</p>
+        </footer>
+        <p class="mt-2 text-center">
+            <a href="https://github.com/jpmcleese/ECE493-CosmicWatch" target="_blank" rel="noopener noreferrer"
+            class="text-blue-500 hover:underline">
+            GitHub
+            </a>
+        </p>
     </div>
 
     <script>
-        // Register the datalabels plugin
+        // Register Chart.js plugins
         Chart.register(ChartDataLabels);
         
-        console.log('✓ Chart.js loaded:', typeof Chart !== 'undefined');
-
+        // Store loaded datasets
+        let DATASETS = {};
+        let allStats = {};
+        
+        // Chart instances
         let charts = { band: null, timeline: null, temp: null };
-        let data = [];
-
+        
+        // Current data
+        let currentData = [];
+        let currentDatasetKey = null;
+        
+        // Badge colors for auto-generated entries
+        const BADGE_COLORS = [
+            { badge: "Location A", color: "bg-green-500/20 text-green-400 border border-green-500/30" },
+            { badge: "Location B", color: "bg-blue-500/20 text-blue-400 border border-blue-500/30" },
+            { badge: "Location C", color: "bg-purple-500/20 text-purple-400 border border-purple-500/30" },
+            { badge: "Location D", color: "bg-orange-500/20 text-orange-400 border border-orange-500/30" },
+            { badge: "Location E", color: "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" },
+            { badge: "Location F", color: "bg-pink-500/20 text-pink-400 border border-pink-500/30" }
+        ];
+        
+        // Parse filename to generate display name
+        function parseFilename(filename) {
+            // Remove .csv extension
+            let name = filename.replace('.csv', '');
+            
+            // Try to parse TIGR naming convention: TIGR_Test_<Location>_<Date>.csv
+            const tigrMatch = name.match(/TIGR_Test[_]?(.+?)_(\d{1,2}_\d{1,2}|\d+)/i);
+            if (tigrMatch) {
+                let location = tigrMatch[1].replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2');
+                let date = tigrMatch[2].replace(/_/g, '/');
+                return {
+                    name: `${location} - ${date}`,
+                    description: `Test data from ${location}`,
+                    location: location
+                };
+            }
+            
+            // Fallback: just clean up the filename
+            name = name.replace(/_/g, ' ').replace(/-/g, ' ');
+            return {
+                name: name,
+                description: `Dataset: ${filename}`,
+                location: name
+            };
+        }
+        
+        // Determine badge based on location keywords
+        function getBadgeInfo(location, index) {
+            const loc = location.toLowerCase();
+            
+            if (loc.includes('1f') || loc.includes('1st') || loc.includes('ground')) {
+                return { badge: "Ground Level", color: "bg-green-500/20 text-green-400 border border-green-500/30" };
+            }
+            if (loc.includes('6f') || loc.includes('6th') || loc.includes('elevated') || loc.includes('roof')) {
+                return { badge: "Elevated", color: "bg-blue-500/20 text-blue-400 border border-blue-500/30" };
+            }
+            if (loc.includes('lab') || loc.includes('sd')) {
+                return { badge: "Lab Environment", color: "bg-purple-500/20 text-purple-400 border border-purple-500/30" };
+            }
+            if (loc.includes('house') || loc.includes('home') || loc.includes('residential')) {
+                return { badge: "Residential", color: "bg-orange-500/20 text-orange-400 border border-orange-500/30" };
+            }
+            if (loc.includes('outdoor') || loc.includes('outside')) {
+                return { badge: "Outdoor", color: "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" };
+            }
+            if (loc.includes('upload')) {
+                return { badge: "Uploaded Data", color: "bg-purple-500/20 text-purple-400 border border-purple-500/30" };
+            }
+            
+            // Default: cycle through colors
+            return BADGE_COLORS[index % BADGE_COLORS.length];
+        }
+        
+        // Load datasets from manifest or by trying known files
+        async function loadDatasets() {
+            const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            
+            // Try to load manifest file first
+            try {
+                const manifestResponse = await fetch(baseUrl + 'datasets.json');
+                if (manifestResponse.ok) {
+                    const manifest = await manifestResponse.json();
+                    console.log('📋 Found datasets.json manifest');
+                    
+                    for (let i = 0; i < manifest.datasets.length; i++) {
+                        const ds = manifest.datasets[i];
+                        const key = ds.file.replace('.csv', '').replace(/[^a-zA-Z0-9]/g, '_');
+                        
+                        DATASETS[key] = {
+                            file: ds.file,
+                            name: ds.name || parseFilename(ds.file).name,
+                            description: ds.description || parseFilename(ds.file).description,
+                            badge: ds.badge || getBadgeInfo(ds.name || ds.file, i).badge,
+                            badgeColor: ds.badgeColor || getBadgeInfo(ds.name || ds.file, i).color,
+                            csv: null // Will be loaded on demand
+                        };
+                    }
+                    return;
+                }
+            } catch (e) {
+                console.log('📋 No datasets.json found, trying auto-discovery...');
+            }
+            
+            // Try GitHub API if we're on GitHub Pages
+            if (window.location.hostname.includes('github.io')) {
+                try {
+                    const pathParts = window.location.pathname.split('/').filter(p => p);
+                    const repoName = pathParts[0] || '';
+                    const username = window.location.hostname.split('.')[0];
+                    const subPath = pathParts.slice(1).join('/') || '';
+                    
+                    const apiUrl = `https://api.github.com/repos/${username}/${repoName}/contents/${subPath}`;
+                    console.log('🔍 Checking GitHub API:', apiUrl);
+                    
+                    const response = await fetch(apiUrl);
+                    if (response.ok) {
+                        const files = await response.json();
+                        const csvFiles = files.filter(f => f.name.endsWith('.csv'));
+                        
+                        console.log(`📁 Found ${csvFiles.length} CSV files via GitHub API`);
+                        
+                        csvFiles.forEach((file, index) => {
+                            const parsed = parseFilename(file.name);
+                            const badgeInfo = getBadgeInfo(parsed.location, index);
+                            const key = file.name.replace('.csv', '').replace(/[^a-zA-Z0-9]/g, '_');
+                            
+                            DATASETS[key] = {
+                                file: file.name,
+                                name: parsed.name,
+                                description: parsed.description,
+                                badge: badgeInfo.badge,
+                                badgeColor: badgeInfo.color,
+                                csv: null
+                            };
+                        });
+                        return;
+                    }
+                } catch (e) {
+                    console.log('⚠️ GitHub API discovery failed:', e.message);
+                }
+            }
+            
+            // Fallback: try common filenames
+            const commonFiles = [
+                'TIGR_Test_1F_Horizon_11_25.csv',
+                'TIGR_Test_6F_Horizon_11_25.csv',
+                'TIGR_Test_SD_Lab_11_25.csv',
+                'TIGR_Test0_Kevin_s_House_11_30.csv',
+                'TIGR_Test1_Kevin_s_House_11_30.csv',
+                'data.csv',
+                'muon_data.csv',
+                'test_data.csv'
+            ];
+            
+            console.log('🔍 Trying common filenames...');
+            
+            for (let i = 0; i < commonFiles.length; i++) {
+                const filename = commonFiles[i];
+                try {
+                    const response = await fetch(baseUrl + filename, { method: 'HEAD' });
+                    if (response.ok) {
+                        const parsed = parseFilename(filename);
+                        const badgeInfo = getBadgeInfo(parsed.location, i);
+                        const key = filename.replace('.csv', '').replace(/[^a-zA-Z0-9]/g, '_');
+                        
+                        DATASETS[key] = {
+                            file: filename,
+                            name: parsed.name,
+                            description: parsed.description,
+                            badge: badgeInfo.badge,
+                            badgeColor: badgeInfo.color,
+                            csv: null
+                        };
+                        console.log(`✅ Found: ${filename}`);
+                    }
+                } catch (e) {
+                    // File doesn't exist, skip
+                }
+            }
+        }
+        
+        // Fetch CSV data for a dataset
+        async function fetchDatasetCSV(key) {
+            if (DATASETS[key].csv !== null) {
+                return DATASETS[key].csv;
+            }
+            
+            const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            const response = await fetch(baseUrl + DATASETS[key].file);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to load ${DATASETS[key].file}`);
+            }
+            
+            DATASETS[key].csv = await response.text();
+            return DATASETS[key].csv;
+        }
+        
+        // Create particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (Math.random() * 8 + 4) + 's';
+                particle.style.animationDelay = (Math.random() * 5) + 's';
+                container.appendChild(particle);
+            }
+        }
+        
         // Parse CSV data
-        function parseData(text) {
-            const lines = text.split('\n').filter(line => line.trim().length > 0);
+        function parseCSV(csvString) {
+            const lines = csvString.trim().split('\n').filter(line => line.trim());
             const parsed = [];
             
             for (let line of lines) {
-                if (line.includes('Muon#,Band')) continue;
-                if (line.includes('\0')) break;
+                if (line.includes('Muon#,Band') || line.includes('Muon#, Band')) continue;
                 
                 const parts = line.split(',');
                 if (parts.length >= 5) {
@@ -181,23 +613,23 @@
                             date: date,
                             time: time,
                             temperature: isNaN(temp) ? null : temp,
-                            datetime: new Date(`${date} ${time}`)
+                            datetime: new Date(`${date}T${time}`)
                         });
                     }
                 }
             }
-            
-            console.log('✓ Parsed', parsed.length, 'readings');
             return parsed;
         }
-
+        
         // Calculate statistics
         function calculateStats(data) {
+            if (data.length === 0) return null;
+            
             const bandCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
             let tempSum = 0, tempCount = 0, minTemp = Infinity, maxTemp = -Infinity;
             
             data.forEach(entry => {
-                bandCounts[entry.energyBand]++;
+                bandCounts[entry.energyBand] = (bandCounts[entry.energyBand] || 0) + 1;
                 if (entry.temperature !== null) {
                     tempSum += entry.temperature;
                     tempCount++;
@@ -208,7 +640,10 @@
             
             const firstTime = data[0].datetime;
             const lastTime = data[data.length - 1].datetime;
-            const durationHours = ((lastTime - firstTime) / (1000 * 60 * 60)).toFixed(2);
+            const durationMinutes = ((lastTime - firstTime) / (1000 * 60));
+            const durationHours = (durationMinutes / 60);
+            
+            const detectionRatePerMin = durationMinutes > 0 ? (data.length / durationMinutes) : 0;
             
             return {
                 totalDetections: data.length,
@@ -216,57 +651,87 @@
                 avgTemp: tempCount > 0 ? (tempSum / tempCount).toFixed(1) : 'N/A',
                 minTemp: tempCount > 0 ? minTemp : 'N/A',
                 maxTemp: tempCount > 0 ? maxTemp : 'N/A',
-                duration: durationHours,
-                detectionRate: durationHours > 0 ? (data.length / parseFloat(durationHours)).toFixed(2) : 'N/A'
+                durationMinutes: durationMinutes.toFixed(1),
+                durationHours: durationHours.toFixed(2),
+                detectionRate: detectionRatePerMin.toFixed(2)
             };
         }
-
-        // Update UI
-        function updateUI(data, stats) {
-            document.getElementById('noDataMessage').classList.add('hidden');
-            document.getElementById('statsCards').classList.remove('hidden');
-            document.getElementById('chartsContainer').classList.remove('hidden');
+        
+        // Animate number counting
+        function animateNumber(element, target, suffix = '', decimals = 0) {
+            const duration = 1000;
+            const start = 0;
+            const startTime = performance.now();
             
-            document.getElementById('totalDetections').textContent = stats.totalDetections;
-            document.getElementById('detectionRate').textContent = stats.detectionRate;
-            document.getElementById('avgTemp').textContent = stats.avgTemp + '°C';
-            document.getElementById('tempRange').textContent = `${stats.minTemp}°C to ${stats.maxTemp}°C`;
-            document.getElementById('duration').textContent = stats.duration;
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = start + (target - start) * eased;
+                element.textContent = current.toFixed(decimals) + suffix;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    element.textContent = target.toFixed(decimals) + suffix;
+                }
+            }
+            requestAnimationFrame(update);
+        }
+        
+        // Update UI with data
+        function updateUI(data, stats, datasetKey) {
+            const dataset = DATASETS[datasetKey];
             
+            // Update dataset info
+            document.getElementById('datasetTitle').textContent = dataset.name;
+            document.getElementById('datasetDescription').textContent = dataset.description;
+            const badge = document.getElementById('datasetBadge');
+            badge.textContent = dataset.badge;
+            badge.className = `px-3 py-1 rounded-full text-sm font-medium ${dataset.badgeColor}`;
+            
+            // Animate stats
+            animateNumber(document.getElementById('statTotal'), stats.totalDetections, '', 0);
+            animateNumber(document.getElementById('statRate'), parseFloat(stats.detectionRate), '', 2);
+            document.getElementById('statTemp').textContent = stats.avgTemp + '°C';
+            document.getElementById('statTempRange').textContent = `${stats.minTemp}°C – ${stats.maxTemp}°C`;
+            animateNumber(document.getElementById('statDuration'), parseFloat(stats.durationMinutes), '', 1);
+            
+            // Create charts
             createBandChart(stats.bandCounts);
             createTimelineChart(data);
             createTempChart(data);
             updateTable(data);
-        }
-
-        // Calculate moving average
-        function calculateMovingAverage(data, windowSize) {
-            const result = [];
-            for (let i = 0; i < data.length; i++) {
-                const start = Math.max(0, i - Math.floor(windowSize / 2));
-                const end = Math.min(data.length, i + Math.ceil(windowSize / 2));
-                const window = data.slice(start, end).filter(v => v !== null);
-                if (window.length > 0) {
-                    result.push(window.reduce((a, b) => a + b, 0) / window.length);
-                } else {
-                    result.push(null);
-                }
+            
+            // Show/hide comparison section based on available datasets
+            if (Object.keys(DATASETS).length > 1) {
+                document.getElementById('comparisonSection').classList.remove('hidden');
+                updateComparison(datasetKey);
+            } else {
+                document.getElementById('comparisonSection').classList.add('hidden');
             }
-            return result;
         }
-
-        // Create charts
+        
+        // Band distribution chart
         function createBandChart(bandCounts) {
             const ctx = document.getElementById('bandChart');
             if (charts.band) charts.band.destroy();
+            
             charts.band = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Band 1 (Low)', 'Band 2', 'Band 3', 'Band 4 (High)'],
+                    labels: ['Band 1\n(Low)', 'Band 2', 'Band 3', 'Band 4\n(High)'],
                     datasets: [{
-                        label: 'Detections',
-                        data: [bandCounts[1], bandCounts[2], bandCounts[3], bandCounts[4]],
-                        backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444']
+                        data: [bandCounts[1] || 0, bandCounts[2] || 0, bandCounts[3] || 0, bandCounts[4] || 0],
+                        backgroundColor: [
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)'
+                        ],
+                        borderColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'],
+                        borderWidth: 2,
+                        borderRadius: 8
                     }]
                 },
                 options: {
@@ -275,106 +740,131 @@
                     plugins: {
                         legend: { display: false },
                         datalabels: {
-                            color: '#ffffff',
-                            font: {
-                                weight: 'bold',
-                                size: 14
-                            },
+                            color: '#fff',
+                            font: { weight: 'bold', size: 14, family: 'IBM Plex Mono' },
                             anchor: 'end',
                             align: 'end',
-                            offset: -4,
-                            formatter: (value) => value
+                            offset: -4
                         }
                     },
                     scales: {
-                        y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                            ticks: { color: '#94a3b8', font: { family: 'IBM Plex Mono' } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
                     }
                 }
             });
         }
-
+        
+        // Timeline chart
         function createTimelineChart(data) {
             const ctx = document.getElementById('timelineChart');
             if (charts.timeline) charts.timeline.destroy();
             
-            // Group by minute instead of hour
+            // Group by minute
             const grouped = {};
             data.forEach(entry => {
-                // Get minute key: YYYY-MM-DDTHH:MM
-                const minuteKey = entry.datetime.toISOString().substring(0, 16);
-                grouped[minuteKey] = (grouped[minuteKey] || 0) + 1;
+                const key = entry.datetime.toISOString().substring(11, 16);
+                grouped[key] = (grouped[key] || 0) + 1;
             });
             
-            // Format labels for better readability
-            const labels = Object.keys(grouped).map(key => {
-                const date = new Date(key);
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            });
+            const labels = Object.keys(grouped);
+            const values = Object.values(grouped);
             
             charts.timeline = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Detections per Minute',
-                        data: Object.values(grouped),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        tension: 0.3,
-                        fill: true
+                        label: 'Detections/min',
+                        data: values,
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#06b6d4'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { labels: { color: '#94a3b8' } },
+                        legend: { display: false },
                         datalabels: { display: false }
                     },
                     scales: {
-                        y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-                        x: { ticks: { color: '#94a3b8', maxRotation: 45, maxTicksLimit: 20 }, grid: { color: '#334155' } }
+                        y: { 
+                            beginAtZero: true,
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                            ticks: { color: '#94a3b8', font: { family: 'IBM Plex Mono' } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { 
+                                color: '#94a3b8',
+                                maxTicksLimit: 10,
+                                maxRotation: 0,
+                                font: { family: 'IBM Plex Mono' }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
                     }
                 }
             });
         }
-
+        
+        // Temperature chart
         function createTempChart(data) {
             const ctx = document.getElementById('tempChart');
             if (charts.temp) charts.temp.destroy();
             
-            const tempData = data.filter(d => d.temperature !== null);
-            const temperatures = tempData.map(d => d.temperature);
+            const temps = data.filter(d => d.temperature !== null).map(d => d.temperature);
+            const labels = temps.map((_, i) => i + 1);
             
-            // Calculate moving average with window size of 10
-            const movingAvg = calculateMovingAverage(temperatures, 10);
+            // Calculate moving average
+            const windowSize = Math.min(10, Math.floor(temps.length / 5));
+            const movingAvg = temps.map((_, i) => {
+                const start = Math.max(0, i - Math.floor(windowSize / 2));
+                const end = Math.min(temps.length, i + Math.ceil(windowSize / 2));
+                const window = temps.slice(start, end);
+                return window.reduce((a, b) => a + b, 0) / window.length;
+            });
             
             charts.temp = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: tempData.map((_, i) => i + 1),
+                    labels: labels,
                     datasets: [
                         {
-                            label: 'Temperature (°C)',
-                            data: temperatures,
-                            borderColor: '#f59e0b',
+                            label: 'Temperature',
+                            data: temps,
+                            borderColor: 'rgba(245, 158, 11, 0.5)',
                             backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                            tension: 0.3,
+                            borderWidth: 1,
+                            pointRadius: 0,
                             fill: true,
-                            pointRadius: 2,
-                            borderWidth: 1
+                            tension: 0.3
                         },
                         {
-                            label: 'Moving Average (10)',
+                            label: 'Moving Avg',
                             data: movingAvg,
                             borderColor: '#ef4444',
-                            backgroundColor: 'transparent',
-                            tension: 0.4,
-                            fill: false,
-                            pointRadius: 0,
                             borderWidth: 3,
-                            borderDash: []
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.4
                         }
                     ]
                 },
@@ -382,126 +872,259 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { labels: { color: '#94a3b8' } },
+                        legend: { 
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#94a3b8', usePointStyle: true }
+                        },
                         datalabels: { display: false }
                     },
                     scales: {
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-                        x: { title: { display: true, text: 'Event #', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                        y: { 
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                            ticks: { color: '#94a3b8', font: { family: 'IBM Plex Mono' } }
+                        },
+                        x: { 
+                            title: { display: true, text: 'Event #', color: '#94a3b8' },
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', maxTicksLimit: 10, font: { family: 'IBM Plex Mono' } }
+                        }
                     }
                 }
             });
         }
-
+        
+        // Update data table
         function updateTable(data) {
             const tbody = document.getElementById('dataTable');
-            tbody.innerHTML = '';
             const bandColors = {
-                1: 'bg-green-500/20 text-green-300',
-                2: 'bg-blue-500/20 text-blue-300',
-                3: 'bg-orange-500/20 text-orange-300',
-                4: 'bg-red-500/20 text-red-300'
+                1: 'bg-green-500/20 text-green-400',
+                2: 'bg-blue-500/20 text-blue-400',
+                3: 'bg-orange-500/20 text-orange-400',
+                4: 'bg-red-500/20 text-red-400'
             };
-            data.slice(-20).reverse().forEach(entry => {
-                tbody.innerHTML += `
-                    <tr class="border-b border-slate-700 hover:bg-slate-700/30">
-                        <td class="px-4 py-3 font-medium">${entry.muonNumber}</td>
-                        <td class="px-4 py-3">
-                            <span class="px-2 py-1 rounded text-xs font-semibold ${bandColors[entry.energyBand]}">
-                                Band ${entry.energyBand}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3">${entry.date}</td>
-                        <td class="px-4 py-3">${entry.time}</td>
-                        <td class="px-4 py-3">${entry.temperature !== null ? entry.temperature : 'N/A'}</td>
-                    </tr>
-                `;
-            });
+            
+            tbody.innerHTML = data.slice(-50).reverse().map(entry => `
+                <tr class="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                    <td class="py-2 font-mono-num">${entry.muonNumber}</td>
+                    <td class="py-2">
+                        <span class="px-2 py-0.5 rounded text-xs font-medium ${bandColors[entry.energyBand]}">
+                            Band ${entry.energyBand}
+                        </span>
+                    </td>
+                    <td class="py-2 font-mono-num text-slate-400">${entry.time}</td>
+                    <td class="py-2 font-mono-num">${entry.temperature !== null ? entry.temperature + '°C' : '—'}</td>
+                </tr>
+            `).join('');
         }
-
-        // Handle file loading
-        function loadFile(file) {
-            console.log('📁 Loading file:', file.name);
-            document.getElementById('fileName').textContent = '📁 Loaded: ' + file.name;
-            document.getElementById('fileName').classList.remove('hidden');
+        
+        // Update comparison section
+        async function updateComparison(currentKey) {
+            const container = document.getElementById('comparisonGrid');
+            
+            // Calculate stats for all datasets
+            for (const key of Object.keys(DATASETS)) {
+                if (!allStats[key]) {
+                    try {
+                        const csv = await fetchDatasetCSV(key);
+                        const data = parseCSV(csv);
+                        allStats[key] = calculateStats(data);
+                    } catch (e) {
+                        console.log(`⚠️ Could not load stats for ${key}`);
+                        allStats[key] = null;
+                    }
+                }
+            }
+            
+            // Find max detection count for scaling
+            const maxDetections = Math.max(...Object.values(allStats).filter(s => s).map(s => s?.totalDetections || 0));
+            
+            container.innerHTML = Object.keys(DATASETS).map(key => {
+                const stats = allStats[key];
+                const dataset = DATASETS[key];
+                const isActive = key === currentKey;
+                const percentage = stats ? (stats.totalDetections / maxDetections * 100) : 0;
+                
+                return `
+                    <div class="flex items-center gap-4 p-3 rounded-lg ${isActive ? 'bg-slate-700/50 ring-2 ring-cyan-400/50' : 'bg-slate-800/30'}">
+                        <div class="w-40 flex-shrink-0">
+                            <div class="font-medium ${isActive ? 'text-cyan-400' : 'text-slate-300'}">${dataset.name}</div>
+                            <div class="text-xs text-slate-500 font-mono-num">${stats?.detectionRate || 0} μ/min</div>
+                        </div>
+                        <div class="flex-grow">
+                            <div class="h-3 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-1000 ${isActive ? 'bg-gradient-to-r from-cyan-500 to-blue-500' : 'bg-slate-500'}" 
+                                     style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                        <div class="w-16 text-right font-mono-num ${isActive ? 'text-cyan-400' : 'text-slate-400'}">
+                            ${stats?.totalDetections || 0}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Populate dropdown
+        function populateDropdown() {
+            const select = document.getElementById('datasetSelector');
+            
+            // Clear existing options except the first one
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            
+            Object.keys(DATASETS).forEach(key => {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = DATASETS[key].name;
+                select.appendChild(option);
+            });
+            
+            // Update welcome stats
+            document.getElementById('welcomeDatasetCount').textContent = Object.keys(DATASETS).length;
+        }
+        
+        // Handle dataset selection
+        async function handleDatasetChange(e) {
+            const key = e.target.value;
+            
+            if (!key) {
+                document.getElementById('welcomeState').classList.remove('hidden');
+                document.getElementById('mainContent').classList.add('hidden');
+                return;
+            }
+            
+            document.getElementById('welcomeState').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('mainContent').classList.add('hidden');
+            
+            try {
+                const csv = await fetchDatasetCSV(key);
+                const data = parseCSV(csv);
+                const stats = calculateStats(data);
+                allStats[key] = stats;
+                currentDatasetKey = key;
+                
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('mainContent').classList.remove('hidden');
+                
+                updateUI(data, stats, key);
+            } catch (error) {
+                console.error('Error loading dataset:', error);
+                document.getElementById('loadingState').innerHTML = `
+                    <div class="text-red-400 text-center">
+                        <div class="text-4xl mb-4">⚠️</div>
+                        <p>Failed to load dataset: ${error.message}</p>
+                        <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Handle file upload
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Clear dropdown selection
+            document.getElementById('datasetSelector').value = '';
+            
+            document.getElementById('welcomeState').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('mainContent').classList.add('hidden');
             
             const reader = new FileReader();
-            reader.onload = (e) => {
-                data = parseData(e.target.result);
-                if (data.length > 0) {
+            reader.onload = function(event) {
+                try {
+                    const csvText = event.target.result;
+                    const data = parseCSV(csvText);
+                    
+                    if (data.length === 0) {
+                        throw new Error('No valid data found in CSV file');
+                    }
+                    
                     const stats = calculateStats(data);
-                    updateUI(data, stats);
+                    
+                    // Create temporary dataset entry
+                    const uploadKey = 'uploaded_' + Date.now();
+                    const parsed = parseFilename(file.name);
+                    const badgeInfo = getBadgeInfo('upload', 0);
+                    
+                    DATASETS[uploadKey] = {
+                        file: file.name,
+                        name: parsed.name,
+                        description: `Uploaded: ${file.name}`,
+                        badge: badgeInfo.badge,
+                        badgeColor: badgeInfo.color,
+                        csv: csvText
+                    };
+                    
+                    allStats[uploadKey] = stats;
+                    currentDatasetKey = uploadKey;
+                    
+                    // Update dropdown to include uploaded file
+                    populateDropdown();
+                    
+                    document.getElementById('loadingState').classList.add('hidden');
+                    document.getElementById('mainContent').classList.remove('hidden');
+                    
+                    updateUI(data, stats, uploadKey);
+                    
+                    console.log(`✅ Successfully loaded uploaded file: ${file.name}`);
+                } catch (error) {
+                    console.error('Error parsing uploaded file:', error);
+                    document.getElementById('loadingState').innerHTML = `
+                        <div class="text-red-400 text-center">
+                            <div class="text-4xl mb-4">⚠️</div>
+                            <p>Failed to parse CSV file: ${error.message}</p>
+                            <p class="text-sm text-slate-400 mt-2">Please ensure your file follows the expected format.</p>
+                            <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">
+                                Try Again
+                            </button>
+                        </div>
+                    `;
                 }
+            };
+            reader.onerror = function() {
+                document.getElementById('loadingState').innerHTML = `
+                    <div class="text-red-400 text-center">
+                        <div class="text-4xl mb-4">⚠️</div>
+                        <p>Failed to read file</p>
+                        <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">
+                            Try Again
+                        </button>
+                    </div>
+                `;
             };
             reader.readAsText(file);
         }
-
-        // File input handler
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) loadFile(file);
-        });
-
-        // Drag and drop
-        const dropZone = document.getElementById('dropZone');
         
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-blue-500', 'bg-blue-500/10');
-        });
-        
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('border-blue-500', 'bg-blue-500/10');
-        });
-        
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-blue-500', 'bg-blue-500/10');
-            const file = e.dataTransfer.files[0];
-            if (file) loadFile(file);
-        });
-
-        dropZone.addEventListener('click', () => {
-            document.getElementById('fileInput').click();
-        });
-
-        // Auto-load tigr_data.csv if button clicked
-        document.getElementById('autoLoadBtn').addEventListener('click', async () => {
-            try {
-                const response = await fetch('tigr_data.csv');
-                if (response.ok) {
-                    const text = await response.text();
-                    data = parseData(text);
-                    if (data.length > 0) {
-                        document.getElementById('fileName').textContent = 'Auto-loaded: tigr_data.csv';
-                        document.getElementById('fileName').classList.remove('hidden');
-                        const stats = calculateStats(data);
-                        updateUI(data, stats);
-                    }
-                } else {
-                    alert('Could not find tigr_data.csv in the same directory');
-                }
-            } catch (error) {
-                alert('Error loading file: ' + error.message);
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            createParticles();
+            
+            console.log('🔬 TIGR Data Explorer initializing...');
+            
+            // Load available datasets
+            await loadDatasets();
+            
+            populateDropdown();
+            
+            if (Object.keys(DATASETS).length > 0) {
+                console.log(`✅ Found ${Object.keys(DATASETS).length} datasets`);
+            } else {
+                console.log('📋 No pre-loaded datasets found. Upload a CSV to get started.');
             }
+            
+            // Add event listeners
+            document.getElementById('datasetSelector').addEventListener('change', handleDatasetChange);
+            document.getElementById('csvFileInput').addEventListener('change', handleFileUpload);
+            
+            console.log('✅ TIGR Data Explorer Ready!');
         });
-
-        // Check if tigr_data.csv exists and show button
-        fetch('tigr_data.csv', { method: 'HEAD' })
-            .then(response => {
-                if (response.ok) {
-                    document.getElementById('autoLoadBtn').style.display = 'inline-block';
-                    // Auto-load after 500ms
-                    setTimeout(() => {
-                        document.getElementById('autoLoadBtn').click();
-                    }, 500);
-                }
-            })
-            .catch(() => {
-                // File doesn't exist, that's fine
-            });
-
-        console.log('✅ TIGR Analyzer ready!');
     </script>
 </body>
 </html>
