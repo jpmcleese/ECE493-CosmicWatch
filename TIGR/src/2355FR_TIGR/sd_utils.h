@@ -13,6 +13,5 @@ void save_reading(unsigned char band);
 void write_readings_to_sd(void);
 void flush_buffer_to_sd(void);
 void sd_card_init(void);
-void display_buffer_contents(void);  // Debug function
 
 #endif /* _TIGR_SD_H */

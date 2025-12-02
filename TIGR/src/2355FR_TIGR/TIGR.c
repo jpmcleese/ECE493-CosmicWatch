@@ -21,7 +21,6 @@
 //    - Software RTC using Timer_B0 (FR2355 lacks hardware RTC)
 //    - ADC peripheral differences (ADC vs ADC12)
 //    - LED2 moved from P9.7 to P6.6
-//    - UART on eUSCI_A0 (P1.6/P1.7)
 //
 //  Changelog:
 //    - Adapted for MSP430FR2355 microcontroller
@@ -37,7 +36,6 @@
 #include "sd_utils.h"
 #include "tigr_utils.h"
 #include "temp_utils.h"
-#include "UART.h"
 
 // Global Variables - Definitions (declared extern in tigr_config.h)
 EnergyReading readings[MAX_READINGS];
@@ -123,7 +121,7 @@ void rtc_init(void) {
     // For 10ms: count to 328 (approximately)
     
     TB0CTL = TBSSEL__ACLK | MC__UP | TBCLR;  // ACLK, Up mode, clear timer
-    TB0CCR0 = 327;                            // ~10ms period (32768/100 ≈ 328)
+    TB0CCR0 = 327;                            // ~10ms period (32768/100 â‰ˆ 328)
     TB0CCTL0 = CCIE;                          // Enable CCR0 interrupt
 }
 
@@ -131,10 +129,6 @@ void rtc_init(void) {
 void msp_init(void) {
     WDTCTL = WDTPW | WDTHOLD;     // Stop watchdog timer
     PM5CTL0 &= ~LOCKLPM5;         // Unlock ports from power manager
-    
-    // Initialize UART (uses UCA0 on FR2355)
-    UART1init(115200);
-    __delay_cycles(200000);       // Let UART stabilize
     
     // LED configuration for FR2355 LaunchPad
     // LED1 = P1.0 (Red)
@@ -194,7 +188,6 @@ void msp_init(void) {
     // Initialize ADC for temperature sensing
     adc_init();
 
-    UCA0IE |= UCRXIE;             // Enable USCI_A0 RX interrupt (FR2355 uses UCA0)
     __enable_interrupt();         // Enable global interrupts
     
     P1OUT &= ~BIT0;               // Initialize LEDs to off
@@ -207,79 +200,12 @@ int main(void) {
     // Small delay after init
     __delay_cycles(500000);
     
-    // Send startup message
-    UART1string("\r\n\r\n");
-    UART1string("***************************************\r\n");
-    UART1string("*  TIGR - Radiation Detector v2.4    *\r\n");
-    UART1string("*  MSP430FR2355 Port                 *\r\n");
-    UART1string("***************************************\r\n");
-    UART1string("System initializing...\r\n\r\n");
+    // Initialize SD card
+    sd_card_init();
     
-    // Display RTC status BEFORE SD init
-    UART1string("=========== RTC Status Check ===========\r\n");
-    UART1string("(Software RTC - Timer_B0 based)\r\n");
-    char rtc_str[6];
-    
-    UART1string("Year  : 0x");
-    hex_to_string_4(RTCYEAR, rtc_str);
-    UART1string((unsigned char*)rtc_str);
-    
-    UART1string("\r\nMonth : 0x");
-    bcd_to_string(RTCMON, rtc_str);
-    UART1string((unsigned char*)rtc_str);
-
-    UART1string("\r\nDay   : 0x");
-    bcd_to_string(RTCDAY, rtc_str);
-    UART1string((unsigned char*)rtc_str);
-    
-    UART1string("\r\nHour  : 0x");
-    bcd_to_string(RTCHOUR, rtc_str);
-    UART1string((unsigned char*)rtc_str);
-    
-    UART1string("\r\nMinute: 0x");
-    bcd_to_string(RTCMIN, rtc_str);
-    UART1string((unsigned char*)rtc_str);
-    
-    UART1string("\r\nSecond: 0x");
-    bcd_to_string(RTCSEC, rtc_str);
-    UART1string((unsigned char*)rtc_str);
-    UART1string("\r\n========================================\r\n\r\n");
-    
-    // Test temperature sensor
-    UART1string("======= Temperature Sensor Test ========\r\n");
-    
-    // Read and display raw ADC value
-    unsigned int raw_adc = read_raw_adc();
-    
-    UART1string("Raw ADC Value: ");
-    char debug_val[12];
-    uint_to_string(raw_adc, debug_val);
-    UART1string((unsigned char*)debug_val);
-    UART1string(" (should be ~1800-2200 at room temp)\r\n");  
-    
-    int current_temp = read_temperature();
-    UART1string("Calculated Temperature: ");
-    char temp_str[12];
-    int_to_string(current_temp, temp_str);
-    UART1string((unsigned char*)temp_str);
-    UART1string(" C\r\n");
-    UART1string("========================================\r\n\r\n");
-    
-    sd_card_init();  // Initialize SD card
-    
-    // Optional: Write header to SD card
-    UART1string("Writing CSV header to buffer...\r\n");
+    // Write CSV header to SD card buffer
     strcpy((char*)sd_buffer, "Muon#,Band,Date,Time,TempC\n");
     buffer_position = strlen((char*)sd_buffer);
-    UART1string("Header prepared: ");
-    UART1string(sd_buffer);
-    
-    if (!sd_initialized) {
-        UART1string("\r\nRunning in DEBUG mode (no SD card)\r\n");
-        UART1string("All data will be displayed on terminal\r\n");
-    }
-    
-    UART1string("\r\nSystem ready! Waiting for muon detections...\r\n");
     
     while(1) {
         __low_power_mode_3();
@@ -325,8 +251,6 @@ __interrupt void Timer_B0_ISR(void) {
 // ISR for Port 2 - Muon detection interrupt
 #pragma vector=PORT2_VECTOR
 __interrupt void ISRP2(void) {
-    UART1string("\r\n>>> Muon detected! ");
-    
     if(P2IFG & BIT1) {            // Energy band 4 caused the interrupt
         P1OUT |= BIT0;            // LED1 on
         P6OUT |= BIT6;            // LED2 on (P6.6 on FR2355)
@@ -350,7 +274,6 @@ __interrupt void ISRP2(void) {
     muon_count++;
     if(reading_count >= MAX_READINGS){
         // Array is full - save to SD card and reset
-        UART1string("Buffer full, writing to SD...\r\n");
         write_readings_to_sd();
         reading_count = 0;
     }
