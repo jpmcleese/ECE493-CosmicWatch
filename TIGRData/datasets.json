@@ -1,0 +1,9 @@
+{
+  "datasets": [
+    { "file": "TIGR_Test_1F_Horizon_11_25.csv", "name": "Horizon Hall - 1st Floor", "badge": "Ground Level" },
+    { "file": "TIGR_Test_6F_Horizon_11_25.csv", "name": "Horizon Hall - 6th Floor", "badge": "Elevated" },
+    { "file": "TIGR_Test_SD_Lab_11_25.csv", "name": "Engineering - 3rd Floor", "badge": "Elevated" },
+    { "file": "TIGR_Test1_Kevin's_House_11_30.csv", "name": "Kevin's House - 6th Floor", "badge": "Elevated" },
+    { "file": "TIGR_Test0_Kevin's_House_11_30.csv", "name": "Kevin's House - 1st Floor", "badge": "Ground Level" }
+  ]
+}
