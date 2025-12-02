@@ -6,6 +6,7 @@
     <title>TIGR Muon Data Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <style>
         body { margin: 0; background: #0f172a; }
         .chart-container { position: relative; height: 300px; }
@@ -74,7 +75,8 @@
                 <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-orange-500/20">
                     <div class="text-slate-400 text-sm mb-1">Avg Temperature</div>
                     <div id="avgTemp" class="text-3xl font-bold text-orange-400">0°C</div>
-                    <div id="tempRange" class="text-slate-400 text-xs"></div>
+                    <div class="text-slate-400 text-xs italic">during uptime</div>
+                    <div id="tempRange" class="text-slate-400 text-xs mt-1"></div>
                 </div>
                 
                 <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
@@ -147,6 +149,9 @@
     </div>
 
     <script>
+        // Register the datalabels plugin
+        Chart.register(ChartDataLabels);
+        
         console.log('✓ Chart.js loaded:', typeof Chart !== 'undefined');
 
         let charts = { band: null, timeline: null, temp: null };
@@ -234,7 +239,23 @@
             updateTable(data);
         }
 
-        // Create charts (same as before)
+        // Calculate moving average
+        function calculateMovingAverage(data, windowSize) {
+            const result = [];
+            for (let i = 0; i < data.length; i++) {
+                const start = Math.max(0, i - Math.floor(windowSize / 2));
+                const end = Math.min(data.length, i + Math.ceil(windowSize / 2));
+                const window = data.slice(start, end).filter(v => v !== null);
+                if (window.length > 0) {
+                    result.push(window.reduce((a, b) => a + b, 0) / window.length);
+                } else {
+                    result.push(null);
+                }
+            }
+            return result;
+        }
+
+        // Create charts
         function createBandChart(bandCounts) {
             const ctx = document.getElementById('bandChart');
             if (charts.band) charts.band.destroy();
@@ -251,7 +272,20 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            color: '#ffffff',
+                            font: {
+                                weight: 'bold',
+                                size: 14
+                            },
+                            anchor: 'end',
+                            align: 'end',
+                            offset: -4,
+                            formatter: (value) => value
+                        }
+                    },
                     scales: {
                         y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
                         x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
@@ -263,17 +297,27 @@
         function createTimelineChart(data) {
             const ctx = document.getElementById('timelineChart');
             if (charts.timeline) charts.timeline.destroy();
+            
+            // Group by minute instead of hour
             const grouped = {};
             data.forEach(entry => {
-                const hourKey = entry.datetime.toISOString().substring(0, 13);
-                grouped[hourKey] = (grouped[hourKey] || 0) + 1;
+                // Get minute key: YYYY-MM-DDTHH:MM
+                const minuteKey = entry.datetime.toISOString().substring(0, 16);
+                grouped[minuteKey] = (grouped[minuteKey] || 0) + 1;
             });
+            
+            // Format labels for better readability
+            const labels = Object.keys(grouped).map(key => {
+                const date = new Date(key);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
+            
             charts.timeline = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: Object.keys(grouped),
+                    labels: labels,
                     datasets: [{
-                        label: 'Detections per Hour',
+                        label: 'Detections per Minute',
                         data: Object.values(grouped),
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -284,10 +328,13 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } },
+                        datalabels: { display: false }
+                    },
                     scales: {
                         y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-                        x: { ticks: { color: '#94a3b8', maxRotation: 45 }, grid: { color: '#334155' } }
+                        x: { ticks: { color: '#94a3b8', maxRotation: 45, maxTicksLimit: 20 }, grid: { color: '#334155' } }
                     }
                 }
             });
@@ -296,24 +343,48 @@
         function createTempChart(data) {
             const ctx = document.getElementById('tempChart');
             if (charts.temp) charts.temp.destroy();
+            
             const tempData = data.filter(d => d.temperature !== null);
+            const temperatures = tempData.map(d => d.temperature);
+            
+            // Calculate moving average with window size of 10
+            const movingAvg = calculateMovingAverage(temperatures, 10);
+            
             charts.temp = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: tempData.map((_, i) => i + 1),
-                    datasets: [{
-                        label: 'Temperature (°C)',
-                        data: tempData.map(d => d.temperature),
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    }]
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: temperatures,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 2,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Moving Average (10)',
+                            data: movingAvg,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'transparent',
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            borderWidth: 3,
+                            borderDash: []
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } },
+                        datalabels: { display: false }
+                    },
                     scales: {
                         y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
                         x: { title: { display: true, text: 'Event #', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
